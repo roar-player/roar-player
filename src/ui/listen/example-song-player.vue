@@ -54,7 +54,7 @@
 	}));
 
 	const songParts = computed((): SongParts => {
-			let i = 1;
+		let i = 1;
 		const result = {
 			0: allInstruments([ "General Breaks", "Whistle in" ])
 		} as SongParts;
