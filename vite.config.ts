@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
 		{
 			name: 'inject-app-name',
 			transformIndexHtml(html) {
-			  return html.replace('__APP_NAME__', APP_NAME);
+				return html.replaceAll('__APP_NAME__', APP_NAME);
 			}
 		},
 	],
