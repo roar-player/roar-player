@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { getI18n } from "./services/i18n";
+import { APP_NAME } from "./appName";
 
 const instrumentKeys = ["ls", "ms", "hs", "re", "sn", "ta", "ag", "sh", "ot"] as const;
 export const instrumentValidator = z.enum(instrumentKeys);
@@ -68,7 +69,7 @@ export type Config = {
 };
 
 const config: Config = {
-	appName: document.title,
+	appName: APP_NAME,
 
 	instrumentKeys: [...instrumentKeys],
 
