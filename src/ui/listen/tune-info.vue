@@ -99,12 +99,15 @@
 			<PlaybackSettingsPicker v-model="playbackSettings" :default-speed="tune.speed" />
 		</h2>
 
-		<ExampleSongPlayer
-			v-if="tune.exampleSong"
-			:tune-name="tuneName"
-			:song="tune.exampleSong"
-			:settings="playbackSettings"
-		/>
+		<template v-if="tune.exampleSong">
+			<ExampleSongPlayer
+				v-for="(song, songIdx) in tune.exampleSong"
+				:key="songIdx"
+				:tune-name="tuneName"
+				:song="song"
+				:settings="playbackSettings"
+			/>
+		</template>
 		<PatternPlaceholder
 			v-for="(pattern, patternName) in tune.patterns"
 			:tune-name="tuneName"

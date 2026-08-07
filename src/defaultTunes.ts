@@ -436,7 +436,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tamborim Stroke"]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tamborim Stroke"]]
 	},
 	'Angela Davis': {
 		categories: [ "common", "medium" ],
@@ -487,7 +487,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3", "Break 3", "Tune", "Tune", "Tune", "Tune"]
+		exampleSong: [[ "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3", "Break 3", "Tune", "Tune", "Tune", "Tune"]]
 	},
 	'Angry Dwarfs': {
 		categories: [ "uncommon" ],
@@ -536,7 +536,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@hs'
 			}
 		},
-		exampleSong: [ "Intro", "Tune", "Tune", "Tune", "Tune", "No-Cent-For-Axel-Break", "Tune", "Tune", "Tune", "Tune", "Tension Break", "Tune", "Tune", "Tune", "Tune" ]
+		exampleSong: [[ "Intro", "Tune", "Tune", "Tune", "Tune", "No-Cent-For-Axel-Break", "Tune", "Tune", "Tune", "Tune", "Tension Break", "Tune", "Tune", "Tune", "Tune" ]]
 	},
 	'Antitek': {
 		categories: ["uncommon", "new", "easy", "onesurdo"],
@@ -585,7 +585,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: "                                                X           XXX "
 			}
 		},
-		exampleSong: ["Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Call Break", "Tune", "Tune"]
+		exampleSong: [["Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Call Break", "Tune", "Tune"]]
 	},
 	'Bella Ciao': {
 		categories: ["uncommon", "new", "medium"],
@@ -626,7 +626,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ta: "@ls"
 			}
 		},
-		exampleSong: ["Intro", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune"]
+		exampleSong: [["Intro", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune"]]
 	},
 	'Bhangra': {
 		categories: [ "common", "onesurdo", "medium" ],
@@ -756,7 +756,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Break 1", "Tune", "Break 2", "Tune", "Break 3", "Tune", "Bra Break", "Tune" ]
+		exampleSong: [[ "Tune", "Break 1", "Tune", "Break 2", "Tune", "Break 3", "Tune", "Bra Break", "Tune" ]]
 	},
 	'Bomba': {
 		categories: ["new", "uncommon", "tricky"],
@@ -802,7 +802,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				time: 8
 			}
 		},
-		exampleSong: ["Call Break", "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune"]
+		exampleSong: [["Call Break", "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune"]]
 	},
 	'Chichita': {
 		categories: ["uncommon", "new"],
@@ -846,7 +846,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ag: "@re"
 			}
 		},
-		exampleSong: ["Intro", "Tune", "Break 1", "Tune", "Break 2", "Tune", "Double Break 2", "Tune"]
+		exampleSong: [["Intro", "Tune", "Break 1", "Tune", "Break 2", "Tune", "Double Break 2", "Tune"]]
 	},
 	'Cochabamba' : {
 		categories: [ "uncommon", "tricky" ],
@@ -914,7 +914,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				hs: '    0       0 XX'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Bra Break (Repi)", "Tune", "Tune", "Cross Kicks", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Bra Break (Repi)", "Tune", "Tune", "Cross Kicks", "Tune", "Tune" ]]
 	},
 	'Coupe-Decale': {
 		displayName: "Coupé-Décalé",
@@ -999,7 +999,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				time: 3
 			}
 		},
-		exampleSong: [ "Intro", "Tune", "Break 1", "Tune", "Break 2", "Intro (6/8)", "Tune (6/8)", "Crest Break (6/8)", "Tune (6/8)", "Break 2", "Tune", "Break 1" ]
+		exampleSong: [[ "Intro", "Tune", "Break 1", "Tune", "Break 2", "Intro (6/8)", "Tune (6/8)", "Crest Break (6/8)", "Tune (6/8)", "Break 2", "Tune", "Break 1" ]]
 	},
 	'Crazy Monkey': {
 		categories: [ "uncommon", "tricky" ],
@@ -1073,7 +1073,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: '(  (  ( )  )  ) '
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Bongo Break 1", "Bongo Break 1", "Bongo Break 2", "Bongo Break 2", "Monkey Break", "Tune", "Tune"]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Bongo Break 1", "Bongo Break 1", "Bongo Break 2", "Bongo Break 2", "Monkey Break", "Tune", "Tune"]]
 	},
 	'Custard': {
 		categories: [ "common", "medium", "cultural-appropriation" ],
@@ -1145,7 +1145,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: '4 3 21 C H I M# '
 			}
 		},
-		exampleSong: ["Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3 (Agogô continues)", "Tune", "Tune", "Tune", "Tune", "Break 5", "Tune", "Tune", "Tune", "Tune", "Singing Break"]
+		exampleSong: [["Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3 (Agogô continues)", "Tune", "Tune", "Tune", "Tune", "Break 5", "Tune", "Tune", "Tune", "Tune", "Singing Break"]]
 	},
 	'Drum&Bass': {
 		categories: [ "common", "medium", "western" ],
@@ -1200,7 +1200,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ta'
 			}
 		},
-		exampleSong: [ "Tune", "Break 2", "Tune", "Break 3", "Break 1", "Tune", "Hip-Hop Break", "Tune" ]
+		exampleSong: [[ "Tune", "Break 2", "Tune", "Break 3", "Break 1", "Tune", "Hip-Hop Break", "Tune" ]]
 	},
 	'Drunken Sailor': {
 		categories: [ "uncommon", "medium", "western" ],
@@ -1248,7 +1248,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ag: '                                                                                ooa         ooa ooa         ooa                 '
 			}
 		},
-		exampleSong: [ "Tune", "Break 1", "Tune", "Break 2", "Tune", "White Shark", "Tune" ]
+		exampleSong: [[ "Tune", "Break 1", "Tune", "Break 2", "Tune", "White Shark", "Tune" ]]
 	},
 	"Flip Flop": {
 		categories: ["new", "uncommon", "medium"],
@@ -1315,7 +1315,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: "   XX      XX      XX      XX   "
 			}
 		},
-		exampleSong: ["Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Ping Pong Break", "Tune", "Tune", "Kick back", "Kick back", "Kick back", "Kick back", "Tune", "Tune", "Call Break", "Tune", "Tune"]
+		exampleSong: [["Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Ping Pong Break", "Tune", "Tune", "Kick back", "Kick back", "Kick back", "Kick back", "Tune", "Tune", "Call Break", "Tune", "Tune"]]
 	},
 	'Funk': {
 		categories: [ "common", "onesurdo", "easy" ],
@@ -1374,7 +1374,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: 'X.X.X.X.X.X.X.X.X.X.X.X.X.X.X.X.'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]]
 	},
 	'Hafla': {
 		categories: [ "common", "tricky" ],
@@ -1446,7 +1446,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Yala Break", "Tune", "Tune", "Break 3", "Tune", "Tune", "Hook Break", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Tune", "Tune", "Kick Back 2", "Kick Back 2", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Yala Break", "Tune", "Tune", "Break 3", "Tune", "Tune", "Hook Break", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Tune", "Tune", "Kick Back 2", "Kick Back 2", "Tune", "Tune" ]]
 	},
 	'Hedgehog': {
 		categories: [ "uncommon", "easy" ],
@@ -1486,7 +1486,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: '        R   S   '
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 2", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 2", "Tune", "Tune" ]]
 	},
 	'Hip Hop': {
 		categories: [ "uncommon", "tricky" ],
@@ -1537,7 +1537,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Kick Back 2", "Kick Back 2", "Kick Back 2", "Kick Back 2", "Tune", { patternName: "Tune", length: 4 }, "Break 1", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Kick Back 2", "Kick Back 2", "Kick Back 2", "Kick Back 2", "Tune", { patternName: "Tune", length: 4 }, "Break 1", "Tune", "Tune" ]]
 	},
 	'Jungle': {
 		categories: [ "uncommon", "tricky", "western" ],
@@ -1576,7 +1576,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ms'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]]
 	},
 	'Kaerajaan': {
 		categories: [ "new", "uncommon", "medium", "onesurdo", "western" ],
@@ -1616,7 +1616,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]]
 	},
 	'Karla Shnikov': {
 		categories: [ "common", "onesurdo", "easy" ],
@@ -1656,7 +1656,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Break 2", "Tune", "Break 2 Inverted", "Tune" ]
+		exampleSong: [[ "Tune", "Break 2", "Tune", "Break 2 Inverted", "Tune" ]]
 	},
 	"Keep Moving": {
 		categories: ["new", "uncommon", "tricky"],
@@ -1702,7 +1702,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: "@re"
 			}
 		},
-		exampleSong: ["Tune", "Break 1", "Tune", "Break 2", "Tune", "Washing Machine Break", "Tune"]
+		exampleSong: [["Tune", "Break 1", "Tune", "Break 2", "Tune", "Washing Machine Break", "Tune"]]
 	},
 	'Malkhas Akhber': {
 		categories: [ "new", "uncommon", "tricky" ],
@@ -1733,7 +1733,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				"ot": "        F       "
 			}
 		},
-		exampleSong: ["Tune", "Tune", "Hey Break", "Tune", "Tune"]
+		exampleSong: [["Tune", "Tune", "Hey Break", "Tune", "Tune"]]
 	},
 	'March for Biodiversity': {
 		categories: [ "uncommon", "tricky", "western" ],
@@ -1781,7 +1781,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: '          F     '
 			}
 		},
-		exampleSong: ['Intro', 'Tune', 'Tune', 'Break 1', 'Tune', 'Tune', 'Break 2', 'Tune', 'Tune']
+		exampleSong: [['Intro', 'Tune', 'Tune', 'Break 1', 'Tune', 'Tune', 'Break 2', 'Tune', 'Tune']]
 	},
 	'Menaiek': {
 		categories: [ "uncommon", "tricky" ],
@@ -1854,7 +1854,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: 'X X XX X XX XX X'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Double Break", "Tune", "Tune", "Mozambique Break", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Double Break", "Tune", "Tune", "Mozambique Break", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Kick Back 1", "Tune", "Tune" ]]
 	},
 	'No Border Bossa': {
 		categories: [ "uncommon", "onesurdo", "medium" ],
@@ -1921,7 +1921,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Break 1", "Tune", "Bra Break", "Tune" ]
+		exampleSong: [[ "Tune", "Break 1", "Tune", "Bra Break", "Tune" ]]
 	},
 	'Norppa': {
 		categories: [ "new", "uncommon", "tricky", "western" ],
@@ -1999,7 +1999,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: "X               "
 			}
 		},
-		exampleSong: ['Tune', 'Tune', 'Tune', 'Tune', 'Break 1', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 2', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 3', 'Tune', 'Tune', 'Tune', 'Tune', 'Call break', 'Tune', 'Tune', 'Tune', 'Tune', 'Shouting break', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 5', 'Tune', 'Tune', 'Tune', 'Tune']
+		exampleSong: [['Tune', 'Tune', 'Tune', 'Tune', 'Break 1', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 2', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 3', 'Tune', 'Tune', 'Tune', 'Tune', 'Call break', 'Tune', 'Tune', 'Tune', 'Tune', 'Shouting break', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 5', 'Tune', 'Tune', 'Tune', 'Tune']]
 	},
 	'Nova Balanca': {
 		displayName: "Nova Balança",
@@ -2051,7 +2051,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune" ]]
 	},
 	'Orangutan': {
 		categories: [ "uncommon", "tricky" ],
@@ -2101,7 +2101,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Tune", "Tune", "Monkey break", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Funky gibbon", "Funky gibbon", "Tune", "Tune", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Tune", "Tune", "Monkey break", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Funky gibbon", "Funky gibbon", "Tune", "Tune", "Tune", "Tune" ]]
 	},
 	'Pekurinen': {
 		categories: [ "uncommon", "tricky", "western" ],
@@ -2182,7 +2182,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: ['Tune', 'Tune', 'Tune', 'Tune', 'Break 1', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 2', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 3', 'Tune', 'Tune', 'Tune', 'Tune', 'Clave Plus', 'Tune', 'Tune', 'Tune', 'Tune', 'Disco Barricade Break', 'Tune', 'Tune', 'Tune', 'Tune', 'Bra Break', 'Tune', 'Tune', 'Tune', 'Tune']
+		exampleSong: [['Tune', 'Tune', 'Tune', 'Tune', 'Break 1', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 2', 'Tune', 'Tune', 'Tune', 'Tune', 'Break 3', 'Tune', 'Tune', 'Tune', 'Tune', 'Clave Plus', 'Tune', 'Tune', 'Tune', 'Tune', 'Disco Barricade Break', 'Tune', 'Tune', 'Tune', 'Tune', 'Bra Break', 'Tune', 'Tune', 'Tune', 'Tune']]
 	},
 	'Police': {
 		displayName: "Sound of da Police",
@@ -2248,7 +2248,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: "D  D            D  D            ",
 			},
 		},
-		exampleSong: ["Intro", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Beast Break", "Tune", "Tune", "Beast Break Inverted"]
+		exampleSong: [["Intro", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Beast Break", "Tune", "Tune", "Beast Break Inverted"]]
 	},
 	'Ragga': {
 		categories: [ "common", "tricky" ],
@@ -2321,7 +2321,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: 'X.X.X.X.X.X.X.X.X.X.X.X.X.X.X.X.'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 2", "Kick Back 2", "Tune", "Tune", "Zorro-Break", "Zorro-Break", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 2", "Kick Back 2", "Tune", "Tune", "Zorro-Break", "Zorro-Break", "Tune", "Tune" ]]
 	},
 	'Rope Skipping': {
 		categories: [ "uncommon", "tricky" ],
@@ -2420,7 +2420,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ag: stretch(4, 12, '                                                ') + 'oaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoaoa'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Oh Shit", "Tune", "Tune", "Fuck Off", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Küsel Break", "Küsel Break", "Tune", "Tune", "Skipping Agogo", "Tune", "Tune", "I like to move it", "Tune", "Tune", "Eye of the tiger", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Oh Shit", "Tune", "Tune", "Fuck Off", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Küsel Break", "Küsel Break", "Tune", "Tune", "Skipping Agogo", "Tune", "Tune", "I like to move it", "Tune", "Tune", "Eye of the tiger", "Tune", "Tune" ]]
 	},
 	'Samba Reggae': {
 		categories: [ "common", "medium", "cultural-appropriation" ],
@@ -2522,7 +2522,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3", "Tune", "Tune", "Tune", "Tune", "SOS Break", "Tune", "Tune", "Tune", "Tune", "Knock On The Door Break", "Knock On The Door (Cut)", "Tune", "Tune", "Tune", "Tune", "Dancing Break", "Tune", "Tune", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3", "Tune", "Tune", "Tune", "Tune", "SOS Break", "Tune", "Tune", "Tune", "Tune", "Knock On The Door Break", "Knock On The Door (Cut)", "Tune", "Tune", "Tune", "Tune", "Dancing Break", "Tune", "Tune", "Tune", "Tune" ]]
 	},
 	"Samba Reggae High": {
 		categories: [ "proposed", "cultural-appropriation" ],
@@ -2593,7 +2593,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ta: "X   XXXXX       X X XXXXX       X X X   XXXXX   XX XX   XXXXX   "
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3", "Tune", "Tune", "Tune", "Tune", "Stop on 1" ]
+		exampleSong: [[ "Tune", "Tune", "Tune", "Tune", "Break 1", "Tune", "Tune", "Tune", "Tune", "Break 2", "Tune", "Tune", "Tune", "Tune", "Break 3", "Tune", "Tune", "Tune", "Tune", "Stop on 1" ]]
 	},
 	"Samba Reggae Low": {
 		categories: [ "proposed", "cultural-appropriation" ],
@@ -2682,7 +2682,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ta: repeat(2, "X  X  X         X  X  X         ") + repeat(2, "X  X  X   XXX XXX  X  X         ")
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tune", "Tune", "SOS Break", "Tune", "Tune", "Tune", "Tune", "Knock On The Door Break", "Knock On The Door (Cut)", "Tune", "Tune", "Tune", "Tune", "Dancing Break", "Tune", "Tune", "Tune", "Tune", "Stop on 1" ]
+		exampleSong: [[ "Tune", "Tune", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Tune", "Tune", "SOS Break", "Tune", "Tune", "Tune", "Tune", "Knock On The Door Break", "Knock On The Door (Cut)", "Tune", "Tune", "Tune", "Tune", "Dancing Break", "Tune", "Tune", "Tune", "Tune", "Stop on 1" ]]
 	},
 	'Sambasso': {
 		categories: [ "common", "onesurdo", "tricky" ],
@@ -2735,7 +2735,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Intro", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]
+		exampleSong: [[ "Intro", "Tune", "Tune", "Break 1", "Tune", "Tune", "Break 2", "Tune", "Tune" ]]
 	},
 	'Sheffield Samba Reggae': {
 		categories: [ "uncommon", "medium", "cultural-appropriation" ],
@@ -2817,7 +2817,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Intro", "Tune", "Break 1", "Tune", "Break 2", "Tune", "Break 3", "Tune", "Whistle Break", "Tune", "Outro" ]
+		exampleSong: [[ "Intro", "Tune", "Break 1", "Tune", "Break 2", "Tune", "Break 3", "Tune", "Whistle Break", "Tune", "Outro" ]]
 	},
 	'Tequila': {
 		categories: [ "uncommon", "medium", "western" ],
@@ -2862,7 +2862,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 2", "Break 1", "Tune", "Tune", "Bra Break", "Break 1", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 2", "Break 1", "Tune", "Tune", "Bra Break", "Break 1", "Tune", "Tune" ]]
 	},
 	'The Roof Is on Fire': {
 		categories: [ "uncommon", "tricky", "western" ],
@@ -2899,7 +2899,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: "                                                                                                            '   "
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Bra Break", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Bra Break", "Tune", "Tune" ]]
 	},
 	'The Sirens of Titan': {
 		categories: [ "uncommon", "medium" ],
@@ -2930,7 +2930,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Tune", "Rented a Tent Break", "Tune" ]
+		exampleSong: [[ "Tune", "Rented a Tent Break", "Tune" ]]
 	},
 	'Trans-Europa-Express': {
 		categories: [ "new", "uncommon", "medium" ],
@@ -2981,7 +2981,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				"sh": "@ls"
 			}
 		},
-		exampleSong: [
+		exampleSong: [[
 			{ patternName: "Tune", instruments: ["ls", "ms", "hs", "sh"] },
 			{ patternName: "Tune", instruments: ["ls", "ms", "hs", "sh"] },
 			"Break 1",
@@ -2990,7 +2990,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 			"Tune", "Tune", "Tune", "Tune",
 			"Tamborim Stroke",
 			"Tune", "Tune", "Tune", "Tune"
-		]
+		]]
 	},
 	'Van Harte Pardon': {
 		categories: [ "uncommon", "tricky" ],
@@ -3050,7 +3050,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				volumeHack: crescendo(16)
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 1", "Tune", "Tune", "Silence Break", "Tune", "Tune", "Break 2", "Break 2 (Cut)", "Tune", "Tune", "Cross Break", "Tune", "Tune", "Cross Eight Break", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 1", "Tune", "Tune", "Silence Break", "Tune", "Tune", "Break 2", "Break 2 (Cut)", "Tune", "Tune", "Cross Break", "Tune", "Tune", "Cross Eight Break", "Tune", "Tune" ]]
 	},
 	'Voodoo': {
 		categories: [ "uncommon", "easy", "cultural-appropriation" ],
@@ -3079,7 +3079,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Scissor Break", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Scissor Break", "Tune", "Tune" ]]
 	},
 	'Walc(z)': {
 		categories: [ "uncommon", "easy", "western" ],
@@ -3203,7 +3203,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Break 5", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Cut-throat Break", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Break 2", "Tune", "Tune", "Break 3", "Tune", "Tune", "Break 5", "Tune", "Tune", "Bra Break", "Tune", "Tune", "Cut-throat Break", "Tune", "Tune" ]]
 	},
 	'Wolf': {
 		categories: [ "uncommon", "tricky" ],
@@ -3249,7 +3249,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				ot: '                                                            A   '
 			}
 		},
-		exampleSong: [ "Tune", "Pat 1", "Tune", "Pat 2", "Tune", "Break 1", "Tune", "Break 2", "Tune" ]
+		exampleSong: [[ "Tune", "Pat 1", "Tune", "Pat 2", "Tune", "Break 1", "Tune", "Break 2", "Tune" ]]
 	},
 	'Xango': {
 		displayName: "Xangô",
@@ -3309,7 +3309,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@re'
 			}
 		},
-		exampleSong: [ "Intro", "Intro", "Intro+Surdos", "Intro+Surdos", "Tune", "Tune", "Boum Shakala Break", "Tune", "Tune", "Break 2", "Tune", "Tune" ]
+		exampleSong: [[ "Intro", "Intro", "Intro+Surdos", "Intro+Surdos", "Tune", "Tune", "Boum Shakala Break", "Tune", "Tune", "Break 2", "Tune", "Tune" ]]
 	},
 	'Zurav Love / Truant': {
 		displayName: "Żurav Love",
@@ -3362,7 +3362,7 @@ const rawTunes: {[tuneName: string]: RawTune} = {
 				sh: '@ls'
 			}
 		},
-		exampleSong: [ "Tune", "Tune", "Bra Break", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 2", "Kick Back 2", "Tune", "Tune" ]
+		exampleSong: [[ "Tune", "Tune", "Bra Break", "Tune", "Tune", "Kick Back 1", "Kick Back 1", "Kick Back 2", "Kick Back 2", "Tune", "Tune" ]]
 	}
 };
 
@@ -3404,8 +3404,8 @@ for(const i in rawTunes) {
 
 	defaultTunes[i] = normalizeTune(newTune);
 
-	const unknown = (defaultTunes[i].exampleSong || [])
-		.map((patternName) => typeof patternName === 'string' ? patternName : patternName.patternName)
+	const unknown = (defaultTunes[i].exampleSong || []).flat()
+		.map((entry) => typeof entry === 'string' ? entry : entry.patternName)
 		.filter((patternName) => !defaultTunes[i].patterns[patternName]);
 	if(unknown.length > 0) {
 		// eslint-disable-next-line no-console

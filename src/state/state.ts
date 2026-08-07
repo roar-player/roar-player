@@ -292,19 +292,27 @@ export function movePattern(state: State, fromTuneAndName: PatternReference, toT
 	if (fromTuneAndName[0] == toTuneAndName[0] && fromTuneAndName[1] == toTuneAndName[1])
 		return;
 
+	const pattern = getPatternFromState(state, fromTuneAndName);
+	if(!pattern)
+		return;
+
 	if(!state.tunes[toTuneAndName[0]])
 		createTune(state, toTuneAndName[0]);
 
 	replacePattern(state, fromTuneAndName, toTuneAndName);
-	createPatternInTune(state.tunes[toTuneAndName[0]], toTuneAndName[1], getPatternFromState(state, fromTuneAndName) || undefined);
+	createPatternInTune(state.tunes[toTuneAndName[0]], toTuneAndName[1], pattern);
 	removePatternFromTune(state.tunes[fromTuneAndName[0]], fromTuneAndName[1]);
 }
 
 export function copyPattern(state: State, fromTuneAndName: PatternReference, toTuneAndName: PatternReference): void {
+	const pattern = getPatternFromState(state, fromTuneAndName);
+	if(!pattern)
+		return;
+
 	if(!state.tunes[toTuneAndName[0]])
 		createTune(state, toTuneAndName[0]);
 
-	createPatternInTune(state.tunes[toTuneAndName[0]], toTuneAndName[1], getPatternFromState(state, fromTuneAndName) || undefined);
+	createPatternInTune(state.tunes[toTuneAndName[0]], toTuneAndName[1], pattern);
 }
 
 export function getSongName(state: State, songIdx?: number): string | undefined {

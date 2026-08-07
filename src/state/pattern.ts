@@ -282,14 +282,34 @@ export function updateStroke(pattern: Pattern, instrument: Instrument, i: number
 }
 
 /**
- * Sets some properties on the given pattern. If the upbeat changes, the strokes are shifted to stay in position.
+ * Sets some properties on the given pattern, adjusting the strokes to preserve as much of the pattern as possible:
+ * If the upbeat changes, the strokes are shifted so that everything from the first regular beat on stays in position.
+ * If the time (subdivisions) changes, the strokes are stretched/shrunk onto the new grid (anchored at the first
+ * regular beat, with the upbeat scaled along), dropping any strokes that do not fall onto the new grid.
  */
 export function updatePattern(pattern: Pattern, update: Partial<PatternProperties>): void {
-	const shift = (update?.upbeat || 0) - pattern.upbeat;
+	const oldTime = pattern.time;
+	const oldUpbeat = pattern.upbeat;
 
 	Object.assign(pattern, update);
 
-	if(shift != 0) {
+	if(update.time != null && update.time != oldTime) {
+		if(update.upbeat == null)
+			pattern.upbeat = Math.round(oldUpbeat * pattern.time / oldTime);
+
+		const newLength = pattern.length * pattern.time + pattern.upbeat;
+		for(const instr of config.instrumentKeys) {
+			const oldStrokes = pattern[instr];
+			const newStrokes: Array<string> = [];
+			for(let i = 0; i < newLength; i++) {
+				// Position of the new stroke relative to the first regular beat, in units of the old grid
+				const oldIndex = oldUpbeat + (i - pattern.upbeat) * oldTime / pattern.time;
+				newStrokes.push((Number.isInteger(oldIndex) && oldStrokes[oldIndex]) || ' ');
+			}
+			pattern[instr] = newStrokes;
+		}
+	} else if(update.upbeat != null && update.upbeat != oldUpbeat) {
+		const shift = update.upbeat - oldUpbeat;
 		const unshift = [];
 		for(let i = 0; i < shift; i++)
 			unshift.push(' ');

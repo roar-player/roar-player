@@ -40,8 +40,8 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 	if(force)
 		element._bbScroll.scrollingDisabled = false;
 
-	const fac1 = (scrollFurther ? 0.1 : 0);
-	const fac2 = (scrollFurther ? 0.4 : 0);
+	const fac1 = (scrollFurther ? 0.5 : 0);
+	const fac2 = (scrollFurther ? 0.9 : 0);
 
 	const left = element.offsetLeft + element._bbScroll.left;
 	if(!element._bbScroll.scrollingDisabled) {

@@ -187,8 +187,15 @@
 		if(i%(pattern.value.time*4) == 0)
 			ret.push("after-bar");
 
-		if(originalPattern.value && (originalPattern.value[instrumentKey][realI] || "").trim() != (pattern.value[instrumentKey][realI] || "").trim())
-			ret.push("has-changes");
+		if(originalPattern.value) {
+			// Map the position onto the grid of the original pattern (anchored at the first regular beat, like
+			// updatePattern() does), so that changing the upbeat or subdivisions does not mark musically
+			// unchanged strokes as changed. Positions that do not exist on the original grid compare as empty.
+			const origI = originalPattern.value.upbeat + i * originalPattern.value.time / pattern.value.time;
+			const origStroke = (Number.isInteger(origI) && originalPattern.value[instrumentKey][origI]) || "";
+			if(origStroke.trim() != (pattern.value[instrumentKey][realI] || "").trim())
+				ret.push("has-changes");
+		}
 
 		return ret;
 	};

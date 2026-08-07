@@ -47,9 +47,16 @@ export class History {
 				true
 			));
 
-			watch(() => Number(this._storage.bbState) && this._storage[`bbState-${this._storage.bbState}`], () => {
-				this.loadHistoricState(Number(this._storage.bbState));
-			}, { deep: true, immediate: true });
+			// Load the state that was last used. This is done only once here rather than in a watcher, since the
+			// bbState pointer in the storage is shared across browser tabs: reacting to changes to it would cause
+			// tabs to overwrite each other's state (and would also revert a state imported from a shared link
+			// right after the initial state has been persisted for the first time).
+			const initialKey = Number(this._storage.bbState);
+			if (initialKey && this._storageDecoded[`${storageKeyPrefix}${initialKey}`]) {
+				this.loadHistoricState(initialKey);
+			} else {
+				this._loadFromCompressed({});
+			}
 
 			watch(this._compressedState, () => {
 				this.saveCurrentState();
@@ -94,9 +101,16 @@ export class History {
 	}
 
 	loadHistoricState(key: number): void {
+		const stored = this._storageDecoded[`${storageKeyPrefix}${key}`];
+		if (!stored) {
+			// The state may have been removed in the meantime, for example by another browser tab. Don't reset
+			// the current state in that case.
+			return;
+		}
+
 		this.currentKey.value = key;
 		this._storage.bbState = `${key}`;
-		this._loadFromCompressed(this._storageDecoded[`bbState-${key}`] ?? {});
+		this._loadFromCompressed(stored);
 	}
 
 	clear(): void {

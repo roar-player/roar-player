@@ -60,7 +60,7 @@
 			</div>
 
 			<div class="btn-group">
-				<UpbeatPicker :modelValue="pattern.upbeat" @update:modelValue="handleUpdatePattern({ upbeat: $event })" :time="pattern.time" :buttonClass="{ 'has-changes': originalPattern && originalPattern.upbeat != pattern.upbeat }" />
+				<UpbeatPicker :modelValue="pattern.upbeat" @update:modelValue="handleUpdatePattern({ upbeat: $event })" :time="pattern.time" :buttonClass="{ 'has-changes': originalPattern && originalPattern.upbeat * pattern.time != pattern.upbeat * originalPattern.time }" />
 			</div>
 		</template>
 
