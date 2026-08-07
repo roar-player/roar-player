@@ -161,6 +161,7 @@
 	},
 	"help": {
 		"user-manual": "User manual",
+		"tune-sheets": "Tune sheet booklet (PDF)",
 		"report-problem": "Report a problem",
 		"download": "Download {{appName}}",
 		"app": "{{appName}} app",

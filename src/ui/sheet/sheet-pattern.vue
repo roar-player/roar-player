@@ -30,10 +30,12 @@
 		barIdx: number;
 		/** The number of beats of this bar (can be less than 4 for the last bar of a pattern of unusual length). */
 		beats: number;
+		/** Set to the repeat count if this bar starts a repeated segment (rendered as “3×” above the bar). */
+		repeatCount?: number;
 		/** Whether this bar starts a repeated segment. */
 		repeatStart: boolean;
-		/** Set to the repeat count if a repeated segment ends after this bar. */
-		repeatEnd?: number;
+		/** Whether a repeated segment ends after this bar. */
+		repeatEnd: boolean;
 	};
 
 	const renderBars = computed((): RenderBar[] => {
@@ -44,8 +46,9 @@
 				ret.push({
 					barIdx,
 					beats: Math.min(4, props.pattern.length - barIdx * 4),
+					repeatCount: segment.repeat > 1 && i === 0 ? segment.repeat : undefined,
 					repeatStart: segment.repeat > 1 && i === 0,
-					repeatEnd: segment.repeat > 1 && i === segment.bars - 1 ? segment.repeat : undefined
+					repeatEnd: segment.repeat > 1 && i === segment.bars - 1
 				});
 			}
 		}
@@ -99,16 +102,22 @@
 		if (bar.repeatStart && strokeIdx === 0) {
 			ret.push("repeat-start");
 		}
-		if (bar.repeatEnd != null && strokeIdx === bar.beats * time - 1) {
+		if (bar.repeatEnd && strokeIdx === bar.beats * time - 1) {
 			ret.push("repeat-end");
 		}
 		return ret;
 	};
 
 	const getBeatClass = (bar: RenderBar, beat: number): string[] => {
-		const ret = ["beat"];
+		const ret = ["beat", beat === 1 ? "after-bar" : "after-beat"];
 		if (beat === bar.beats) {
 			ret.push("before-bar");
+		}
+		if (bar.repeatStart && beat === 1) {
+			ret.push("repeat-start");
+		}
+		if (bar.repeatEnd && beat === bar.beats) {
+			ret.push("repeat-end");
 		}
 		return ret;
 	};
@@ -123,12 +132,16 @@
 
 		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`">
 			<thead>
+				<tr v-if="line.some((bar) => bar.repeatCount != null)">
+					<th class="row-label"></th>
+					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
+					<td v-for="bar in line" :key="bar.barIdx" :colspan="bar.beats * sheet.time" class="repeat-count">{{bar.repeatCount != null ? `${bar.repeatCount}×` : ""}}</td>
+				</tr>
 				<tr>
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat" class="upbeat"></td>
 					<template v-for="bar in line" :key="bar.barIdx">
 						<td v-for="beat in bar.beats" :key="beat" :colspan="sheet.time" :class="getBeatClass(bar, beat)">{{bar.barIdx * 4 + beat}}</td>
-						<td v-if="bar.repeatEnd != null" class="repeat-count-spacer"></td>
 					</template>
 				</tr>
 			</thead>
@@ -149,7 +162,6 @@
 							:key="strokeIdx"
 							:class="getStrokeClass(bar, strokeIdx - 1)"
 						>{{getStroke(row, bar, strokeIdx - 1)}}</td>
-						<td v-if="bar.repeatEnd != null && rowIdx === 0" :rowspan="sheet.rows.length" class="repeat-count">×{{bar.repeatEnd}}</td>
 					</template>
 				</tr>
 			</tbody>
@@ -191,18 +203,40 @@
 
 		thead {
 			td {
-				border-bottom: 1.5pt solid #000;
-				text-align: center;
 				font-size: 8pt;
-				padding-bottom: 0.5mm;
+				vertical-align: bottom;
 			}
 
-			td.repeat-count-spacer {
-				border-bottom: none;
+			td.beat {
+				text-align: left;
+				padding-left: 1mm;
+
+				&.after-beat {
+					border-left: 0.75pt solid #666;
+				}
+
+				&.after-bar {
+					border-left: 1.5pt solid #000;
+				}
+
+				&.before-bar {
+					border-right: 1.5pt solid #000;
+				}
+
+				&.repeat-start {
+					border-left: 3px double #000;
+				}
+
+				&.repeat-end {
+					border-right: 3px double #000;
+				}
 			}
 
-			th.row-label {
-				border-bottom: none;
+			td.repeat-count {
+				font-size: 8pt;
+				font-weight: bold;
+				text-align: left;
+				padding-left: 1mm;
 			}
 		}
 
@@ -232,14 +266,6 @@
 			&.repeat-end {
 				border-right: 3px double #000;
 			}
-		}
-
-		td.repeat-count {
-			font-size: 10pt;
-			font-weight: bold;
-			padding-left: 1.5mm;
-			vertical-align: middle;
-			white-space: nowrap;
 		}
 
 		table.time-2 td.stroke {

@@ -41,25 +41,26 @@
 <style lang="scss">
 	.bb-sheet-legend {
 		break-inside: avoid;
+		color: #888;
 
 		h2 {
-			font-size: 11pt;
+			font-size: 8pt;
 			font-weight: bold;
-			margin: 0 0 1mm 0;
+			margin: 0 0 0.5mm 0;
 		}
 
 		ul {
 			list-style: none;
 			margin: 0;
 			padding: 0;
-			columns: 3;
-			font-size: 9pt;
+			columns: 4;
+			font-size: 7pt;
 		}
 
 		.bb-sheet-legend-symbol {
 			display: inline-block;
-			min-width: 8mm;
-			margin-right: 2mm;
+			min-width: 5mm;
+			margin-right: 1.5mm;
 			font-weight: bold;
 		}
 	}

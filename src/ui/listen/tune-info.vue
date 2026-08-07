@@ -11,6 +11,7 @@
 	import { download, ExportType } from "../utils/export";
 	import { BeatboxReference, getPlayerById } from "../../services/player";
 	import { getLocalizedDisplayName, getTuneDescriptionHtml, T, useI18n } from "../../services/i18n";
+	import { getTuneSlug } from "../../state/sheet";
 
 	const state = injectStateRequired();
 
@@ -28,6 +29,9 @@
 	const editPattern = useRefWithOverride(undefined, () => props.editPattern, (patternName) => emit("update:editPattern", patternName));
 
 	const tune = computed(() => props.tuneName && state.value.tunes[props.tuneName]);
+
+	/** The URL of the PDF sheet generated from the pattern definitions (see scripts/generate-sheets.mjs). */
+	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName, tune.value || undefined)}.pdf`);
 	const tuneDescriptionHtml = computed(() => {
 		if(!defaultTunes[props.tuneName]?.descriptionFilename)
 			return null;
@@ -85,7 +89,7 @@
 				</T>
 			</em>
 		</p>
-		<p v-if="tune.sheet"><a :href="tune.sheet" target="_blank">{{i18n.t("tune-info.tune-sheet-pdf")}}</a></p>
+		<p><a :href="sheetPdfUrl" target="_blank">{{i18n.t("tune-info.tune-sheet-pdf")}}</a></p>
 
 		<div v-if="tune.video">
 			<h2>{{i18n.t("tune-info.video")}}</h2>

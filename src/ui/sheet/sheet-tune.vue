@@ -80,7 +80,8 @@
 			}
 
 			.bb-sheet-tune-speed {
-				font-size: 10pt;
+				font-size: 9pt;
+				color: #888;
 				white-space: nowrap;
 			}
 		}
