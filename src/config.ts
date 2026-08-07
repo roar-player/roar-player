@@ -113,18 +113,18 @@ const config: Config = {
 
 	strokes: {
 		"X": "X",
-		"h": "hd",
+		"h": "h", // Hand
 		"0": "0",
-		"s": "sil",
-		"f": "fl",
-		"r": "rim",
+		"s": "s", // Silent
+		"f": "f", // Flair
+		"r": "r", // Rim
 		"o": "l",
 		"a": "h",
 		"t": "w", // Whippy stick (tamborim stick)
 		".": ".",
-		"w" : "Wh",
-		"y" : "Wh2", // Long whistle
-		"z": "s", // Soft flare
+		"w" : "w", // Short whistle
+		"y" : "W", // Long whistle
+		"z": "z", // Soft flare
 		"A" : "Oi!",
 		"B" : "Ua!",
 		"D" : "Oo",
