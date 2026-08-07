@@ -19,7 +19,7 @@
 	import { computed, ref, watchEffect } from "vue";
 	import { getSortedTuneList, normalizeState } from "../../state/state";
 	import { provideState } from "../../services/state";
-	import { getTuneSlug } from "../../state/sheet";
+	import { getTuneSlug, tuneHasSheet } from "../../state/sheet";
 	import SheetTune from "./sheet-tune.vue";
 	import SheetLegend from "./sheet-legend.vue";
 	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
@@ -33,7 +33,8 @@
 	const state = ref(normalizeState());
 	provideState(state);
 
-	const allTuneNames = computed(() => getSortedTuneList(state.value));
+	// Tunes in which all patterns are hidden from the sheets are left out entirely
+	const allTuneNames = computed(() => getSortedTuneList(state.value).filter((name) => tuneHasSheet(state.value.tunes[name])));
 
 	const tune = computed(() => props.tuneName != null ? state.value.tunes[props.tuneName] : undefined);
 

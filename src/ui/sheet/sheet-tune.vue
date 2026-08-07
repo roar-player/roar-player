@@ -31,13 +31,9 @@
 		return descriptionFilename ? getTuneDescriptionHtml(descriptionFilename) : undefined;
 	});
 
-	const exampleSongTexts = computed(() => props.tune.exampleSong?.map((song) => song.map((entry) => {
-		if (typeof entry === "string") {
-			return getLocalizedDisplayName(entry);
-		}
-		const patternName = getLocalizedDisplayName(entry.patternName);
-		return entry.tuneName != null ? `${getLocalizedDisplayName(entry.tuneName)}: ${patternName}` : patternName;
-	}).join(" – ")));
+	const visiblePatterns = computed(() => Object.fromEntries(
+		Object.entries(props.tune.patterns).filter(([, pattern]) => !pattern.hideFromSheet)
+	));
 </script>
 
 <template>
@@ -50,15 +46,11 @@
 		<div v-if="descriptionHtml" class="bb-sheet-tune-description" v-html="descriptionHtml"></div>
 
 		<SheetPattern
-			v-for="(pattern, patternName) in tune.patterns"
+			v-for="(pattern, patternName) in visiblePatterns"
 			:key="patternName"
 			:patternName="String(patternName)"
 			:pattern="pattern"
 		/>
-
-		<p v-for="(songText, songIdx) in exampleSongTexts" :key="songIdx" class="bb-sheet-tune-example-song">
-			<strong>{{i18n.t("sheet.example-song")}}:</strong>{{" "}}{{songText}}
-		</p>
 
 		<SheetLegend v-if="showLegend" :tunes="[tune]" />
 	</section>
@@ -70,7 +62,7 @@
 			display: flex;
 			align-items: baseline;
 			justify-content: space-between;
-			border-bottom: 4px double #000;
+			border-bottom: 1pt solid #000;
 			margin-bottom: 3mm;
 
 			h1 {
@@ -112,6 +104,8 @@
 				font-size: 11pt;
 				font-weight: bold;
 				margin: 0 0 1mm 0;
+				border-bottom: none;
+				padding-bottom: 0;
 			}
 
 			p {
@@ -124,9 +118,5 @@
 			}
 		}
 
-		.bb-sheet-tune-example-song {
-			font-size: 9pt;
-			margin: 0 0 3mm 0;
-		}
 	}
 </style>

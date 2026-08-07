@@ -185,8 +185,6 @@
 		"everybody-else": "Everybody else",
 		"crescendo": "soft to loud",
 		"decrescendo": "loud to soft",
-		"legend": "Legend",
-		"example-song": "Suggested structure",
 		"speed": "{{bpm}} bpm",
 		"booklet-title": "Tune sheets",
 		"tune-not-found": "This tune does not exist.",

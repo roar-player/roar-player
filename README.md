@@ -112,6 +112,16 @@ generated sheets can be wrapped in an element with the class `no-sheet`, e.g.
 `<div class="no-sheet">...</div>` (with blank lines around the tags, the content in between is still rendered
 as Markdown).
 
+The sheets can be customized further:
+* A pattern with `hideFromSheet: true` (in `src/defaultTunes.ts`) is not printed on the sheets; tunes in which
+  all patterns are hidden are left out entirely.
+* A pattern with `sheetOpenRepeats: [<beat numbers>]` renders the repeated block starting at that beat number
+  (1-based, as printed on the sheet) with “N×” instead of the repeat count, for parts that are repeated
+  indefinitely. This only has an effect if the block is detected as a repetition.
+* `sheetAliases` in `src/config.ts` defines names for instrument groups (e.g. “Surdos” for Surdo 1 + Surdo 2)
+  that are used as row labels when all instruments of the group play the same line, and
+  `instruments[key].sheetShortName` defines a shorter instrument name used when a row lists several names.
+
 Emoji (e.g. in tune names or descriptions) are rendered on the sheets if an emoji font is installed (e.g. the
 `font-noto-emoji` package); on the booklet's cover and contents pages (which are not rendered by the browser)
 they are replaced with "?".

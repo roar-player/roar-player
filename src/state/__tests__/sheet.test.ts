@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import * as z from "zod";
 import { CompressedPattern, compressedPatternValidator, patternFromCompressed } from "../pattern";
 import { normalizeTune } from "../tune";
-import { getSheetPattern, getUsedStrokes } from "../sheet";
+import { getSheetPattern, getUsedStrokes, tuneHasSheet } from "../sheet";
 
 function makePattern(compressed: z.input<typeof compressedPatternValidator>) {
 	// patternFromCompressed() normalizes its input, so passing the unparsed input form (e.g. a legacy volume hack) is fine
@@ -292,6 +292,19 @@ describe("getSheetPattern", () => {
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2 }]);
 	});
 
+	test("marks repeated blocks listed in sheetOpenRepeats as open-ended", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 12,
+			ls: "X   X   X   X   " + "X X X X X X X X ".repeat(2),
+			sheetOpenRepeats: [5]
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 1, repeat: 2, open: true }
+		]);
+	});
+
 	test("does not condense patterns whose length is not a multiple of 4 beats", () => {
 		const sheet = getSheetPattern(makePattern({
 			length: 2,
@@ -321,5 +334,26 @@ describe("getUsedStrokes", () => {
 		expect(strokes).toContain("a");
 		expect(strokes).not.toContain("r");
 		expect(strokes).not.toContain(" ");
+	});
+
+	test("ignores patterns that are hidden from the sheet", () => {
+		const tune = normalizeTune({
+			patterns: {
+				"Tune": patternFromCompressed({ length: 4, ls: "X               " }),
+				"Hidden": patternFromCompressed({ length: 4, re: "f               ", hideFromSheet: true })
+			}
+		});
+
+		expect(getUsedStrokes([tune])).toEqual(["X"]);
+	});
+});
+
+describe("tuneHasSheet", () => {
+	test("is false only when all patterns are hidden", () => {
+		const visible = patternFromCompressed({ length: 4, ls: "X               " });
+		const hidden = patternFromCompressed({ length: 4, ls: "X               ", hideFromSheet: true });
+
+		expect(tuneHasSheet(normalizeTune({ patterns: { "A": visible, "B": hidden } }))).toBe(true);
+		expect(tuneHasSheet(normalizeTune({ patterns: { "B": hidden } }))).toBe(false);
 	});
 });

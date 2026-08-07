@@ -64,7 +64,9 @@
 
 	/**
 	 * The cells of the repeat indicator row above the beat numbers: one cell per segment (per line), so that the
-	 * grey background of a repeated block is continuous across its bars but interrupted between adjacent blocks.
+	 * grey background of a repeated block is continuous across its bars. Where a block actually starts/ends (as
+	 * opposed to being wrapped to another line), the bar line is extended up through the cell; at a line wrap the
+	 * grey runs to the edge of the line to indicate that the block continues.
 	 */
 	const getRepeatCells = (line: RenderBar[]) => {
 		const groups: Array<{ bars: RenderBar[] }> = [];
@@ -76,12 +78,17 @@
 				groups.push({ bars: [bar] });
 			}
 		}
-		return groups.map((group) => ({
-			colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
-			label: group.bars[0].repeatCount != null ? `${group.bars[0].repeatCount}×` : "",
-			dynamics: group.bars[0].repeatCount != null ? sheet.value.segments[group.bars[0].segmentIdx].dynamics : undefined,
-			inRepeat: group.bars[0].inRepeat
-		}));
+		return groups.map((group) => {
+			const segment = sheet.value.segments[group.bars[0].segmentIdx];
+			return {
+				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
+				label: group.bars[0].repeatCount != null ? `${segment.open ? "N" : group.bars[0].repeatCount}×` : "",
+				dynamics: group.bars[0].repeatCount != null ? segment.dynamics : undefined,
+				inRepeat: group.bars[0].inRepeat,
+				startsBlock: group.bars[0].inRepeat && group.bars[0].barIdx === segment.startBar,
+				endsBlock: group.bars[0].inRepeat && group.bars[group.bars.length - 1].barIdx === segment.startBar + segment.bars - 1
+			};
+		});
 	};
 
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
@@ -100,9 +107,30 @@
 			return i18n.t("sheet.everybody");
 		} else if (row.label === "everybody-else") {
 			return i18n.t("sheet.everybody-else");
-		} else {
-			return row.instruments.map((instrument) => config.instruments[instrument].name()).join(", ");
 		}
+
+		// Replace complete alias groups (e.g. “Dobra 1, Dobra 2” → “Dobras”) with their alias name; if the row
+		// then still lists several names, the instruments use their short names (e.g. “Tambi” for “Tamborim”)
+		const remaining = new Set(row.instruments);
+		const parts: Array<{ order: number; name: (short: boolean) => string }> = [];
+		for (const alias of [...(config.sheetAliases ?? [])].sort((a, b) => b.instruments.length - a.instruments.length)) {
+			if (alias.instruments.length > 0 && alias.instruments.every((instrument) => remaining.has(instrument))) {
+				for (const instrument of alias.instruments) {
+					remaining.delete(instrument);
+				}
+				parts.push({
+					order: Math.min(...alias.instruments.map((instrument) => config.instrumentKeys.indexOf(instrument))),
+					name: () => alias.name()
+				});
+			}
+		}
+		for (const instrument of remaining) {
+			parts.push({
+				order: config.instrumentKeys.indexOf(instrument),
+				name: (short) => (short && config.instruments[instrument].sheetShortName || config.instruments[instrument].name)()
+			});
+		}
+		return parts.sort((a, b) => a.order - b.order).map((part) => part.name(parts.length > 1)).join(", ");
 	};
 
 	const hasNote = (row: SheetRow, strokeIdx: number): boolean => {
@@ -216,17 +244,17 @@
 
 <template>
 	<div class="bb-sheet-pattern">
-		<h3>
+		<h2>
 			{{displayName}}
 			<span v-if="sheet.dynamics" class="bb-sheet-pattern-dynamics">({{i18n.t(`sheet.${sheet.dynamics}`)}})</span>
-		</h3>
+		</h2>
 
 		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`" translate="no">
 			<thead>
 				<tr v-if="line.some((bar) => bar.inRepeat)">
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
-					<td v-for="(cell, cellIdx) in getRepeatCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat }">{{cell.label}}<span v-if="cell.dynamics" class="repeat-dynamics">&#32;({{i18n.t(`sheet.${cell.dynamics}`)}})</span></td>
+					<td v-for="(cell, cellIdx) in getRepeatCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat, 'repeat-start': cell.startsBlock, 'repeat-end': cell.endsBlock }">{{cell.label}}<span v-if="cell.dynamics" class="repeat-dynamics">&#32;({{i18n.t(`sheet.${cell.dynamics}`)}})</span></td>
 				</tr>
 				<tr>
 					<th class="row-label"></th>
@@ -263,13 +291,14 @@
 	.bb-sheet-pattern {
 		$beat-width: 18mm;
 
-		break-inside: avoid;
 		margin-bottom: 4mm;
 
-		h3 {
+		h2 {
 			font-size: 11pt;
 			font-weight: bold;
 			margin: 0 0 1mm 0;
+			// Keep the title together with (at least) the first line of the pattern
+			break-after: avoid;
 
 			.bb-sheet-pattern-dynamics {
 				font-weight: normal;
@@ -281,6 +310,9 @@
 		table {
 			border-collapse: collapse;
 			margin-bottom: 1.5mm;
+			// Page breaks happen between the lines of a pattern, not within one (breaking whole patterns
+			// leads to almost-empty pages before long patterns)
+			break-inside: avoid;
 		}
 
 		th.row-label {
@@ -315,13 +347,6 @@
 					border-right: 1.5pt solid #000;
 				}
 
-				&.repeat-start {
-					border-left: 3px double #000;
-				}
-
-				&.repeat-end {
-					border-right: 3px double #000;
-				}
 			}
 
 			td.repeat-count {
@@ -335,11 +360,19 @@
 					font-style: italic;
 				}
 
-				// The white gaps make clear where one repeated block ends and the next one starts
 				&.repeat {
 					background-color: #ececec;
-					border-left: 1mm solid #fff;
-					border-right: 1mm solid #fff;
+				}
+
+				// The bar lines are extended up through the repeat row where a block actually starts/ends;
+				// at a line wrap there is no border, so the grey runs to the edge of the line to indicate
+				// that the block continues
+				&.repeat-start {
+					border-left: 1.5pt solid #000;
+				}
+
+				&.repeat-end {
+					border-right: 1.5pt solid #000;
 				}
 			}
 
@@ -348,7 +381,14 @@
 			}
 		}
 
-		$stroke-height: 5.5mm;
+		$stroke-height: 4.5mm;
+
+		// A small white gap between the instrument rows, interrupting the vertical lines (and the grey repeat
+		// background). The white border must be clearly wider than the bar lines (also after device pixel
+		// rounding) so that it wins the border-collapse conflict at the intersections.
+		tbody tr:not(:first-child) td.stroke {
+			border-top: 0.8mm solid #fff;
+		}
 
 		td.stroke {
 			text-align: center;

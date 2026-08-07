@@ -8,13 +8,10 @@
 	import { Tune } from "../../state/tune";
 	import { getUsedStrokes } from "../../state/sheet";
 	import { computed } from "vue";
-	import { useI18n } from "../../services/i18n";
 
 	const props = defineProps<{
 		tunes: Tune[];
 	}>();
-
-	const i18n = useI18n();
 
 	const entries = computed(() => getUsedStrokes(props.tunes)
 		.filter((stroke) => config.strokesDescription[stroke])
@@ -28,7 +25,6 @@
 
 <template>
 	<div v-if="entries.length > 0" class="bb-sheet-legend">
-		<h2>{{i18n.t("sheet.legend")}}</h2>
 		<ul>
 			<li v-for="entry in entries" :key="entry.stroke">
 				<span class="bb-sheet-legend-symbol">{{entry.display}}</span>
@@ -42,12 +38,6 @@
 	.bb-sheet-legend {
 		break-inside: avoid;
 		color: #888;
-
-		h2 {
-			font-size: 8pt;
-			font-weight: bold;
-			margin: 0 0 0.5mm 0;
-		}
 
 		ul {
 			list-style: none;

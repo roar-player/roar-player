@@ -44,7 +44,15 @@ const patternPropertiesValidator = z.object({
 	upbeat: z.number().default(0),
 	loop: z.boolean().default(false),
 	displayName: z.string().optional(),
-	volumeHack: instrumentVolumeHackValidator.optional()
+	volumeHack: instrumentVolumeHackValidator.optional(),
+	/** If true, the pattern is not printed on the generated tune sheets (see src/ui/sheet/). */
+	hideFromSheet: z.boolean().optional(),
+	/**
+	 * Beat numbers (1-based, as printed on the tune sheets) at which an indefinitely repeated block starts.
+	 * The repeat count of such a block is rendered as “N×” instead of the number of times it appears in the
+	 * pattern. Only has an effect if the block is detected as a repetition on the sheet.
+	 */
+	sheetOpenRepeats: z.array(z.number()).optional()
 });
 
 /**
@@ -215,6 +223,10 @@ export function patternFromCompressed(encodedPatternObject: CompressedPattern, o
 		ret.upbeat = 0;
 	if(encodedPatternObject.volumeHack != null)
 		ret.volumeHack = encodedPatternObject.volumeHack;
+	if(encodedPatternObject.hideFromSheet != null)
+		ret.hideFromSheet = encodedPatternObject.hideFromSheet;
+	if(encodedPatternObject.sheetOpenRepeats != null)
+		ret.sheetOpenRepeats = encodedPatternObject.sheetOpenRepeats;
 
 	if(ret.length == null)
 		throw new Error("No pattern length provided.");

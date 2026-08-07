@@ -23,9 +23,19 @@ export type Config = {
 
 	instruments: Record<Instrument, {
 		name: () => string;
+		/** Optional shorter name shown on the tune sheets when the instrument shares a row with other instruments. */
+		sheetShortName?: () => string;
 		/** The strokes that this instrument can play. Defines what options the stroke picker will display. */
 		strokes: Array<Stroke>;
 	}>;
+
+	/**
+	 * Optional aliases for groups of instruments on the tune sheets: when all instruments of an alias play the
+	 * same line, the row is labelled with the alias name instead of the individual instrument names. A row whose
+	 * instruments can be fully expressed through aliases is labelled that way even if it would otherwise be
+	 * labelled “Everybody else” (and keeps its position in the instrument order).
+	 */
+	sheetAliases?: Array<{ name: () => string; instruments: Instrument[] }>;
 
 	/** Mapping each stroke to its representation in the notes as displayed to the user. */
 	strokes: Record<Stroke, string>;

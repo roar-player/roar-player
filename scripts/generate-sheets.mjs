@@ -95,16 +95,26 @@ async function serveDist() {
 	return { server, url: `http://127.0.0.1:${server.address().port}/` };
 }
 
-/** Returns the given text with all characters that cannot be encoded by the given font replaced with "?". */
+/**
+ * Returns the given text with emoji removed (the embedded fonts render them as placeholder boxes, e.g. in the
+ * table of contents) and all other characters that cannot be encoded by the given font replaced with "?".
+ * The PDF bookmarks are not affected, they keep the emoji.
+ */
 function encodableText(font, text) {
-	return text.normalize("NFC").split("").map((char) => {
-		try {
-			font.widthOfTextAtSize(char, 10);
-			return char;
-		} catch {
-			return "?";
-		}
-	}).join("");
+	return text.normalize("NFC")
+		.replace(/\p{Extended_Pictographic}|\u{FE0F}|\u{200D}/gu, "")
+		.replace(/\s+/g, " ")
+		.trim()
+		.split("")
+		.map((char) => {
+			try {
+				font.widthOfTextAtSize(char, 10);
+				return char;
+			} catch {
+				return "?";
+			}
+		})
+		.join("");
 }
 
 /** Embeds a Unicode system font into the document, falling back to the standard font Helvetica. */
