@@ -37,30 +37,51 @@
 		barIdx: number;
 		/** The number of beats of this bar (can be less than 4 for the last bar of a pattern of unusual length). */
 		beats: number;
+		/** The index of the segment that this bar belongs to. */
+		segmentIdx: number;
+		/** Whether this bar is part of a repeated segment (highlighted with a grey background). */
+		inRepeat: boolean;
 		/** Set to the repeat count if this bar starts a repeated segment (rendered as “3×” above the bar). */
 		repeatCount?: number;
-		/** Whether this bar starts a repeated segment. */
-		repeatStart: boolean;
-		/** Whether a repeated segment ends after this bar. */
-		repeatEnd: boolean;
 	};
 
 	const renderBars = computed((): RenderBar[] => {
 		const ret: RenderBar[] = [];
-		for (const segment of sheet.value.segments) {
+		sheet.value.segments.forEach((segment, segmentIdx) => {
 			for (let i = 0; i < segment.bars; i++) {
 				const barIdx = segment.startBar + i;
 				ret.push({
 					barIdx,
 					beats: Math.min(4, props.pattern.length - barIdx * 4),
-					repeatCount: segment.repeat > 1 && i === 0 ? segment.repeat : undefined,
-					repeatStart: segment.repeat > 1 && i === 0,
-					repeatEnd: segment.repeat > 1 && i === segment.bars - 1
+					segmentIdx,
+					inRepeat: segment.repeat > 1,
+					repeatCount: segment.repeat > 1 && i === 0 ? segment.repeat : undefined
 				});
 			}
-		}
+		});
 		return ret;
 	});
+
+	/**
+	 * The cells of the repeat indicator row above the beat numbers: one cell per segment (per line), so that the
+	 * grey background of a repeated block is continuous across its bars but interrupted between adjacent blocks.
+	 */
+	const getRepeatCells = (line: RenderBar[]) => {
+		const groups: Array<{ bars: RenderBar[] }> = [];
+		for (const bar of line) {
+			const last = groups[groups.length - 1];
+			if (last && last.bars[0].segmentIdx === bar.segmentIdx) {
+				last.bars.push(bar);
+			} else {
+				groups.push({ bars: [bar] });
+			}
+		}
+		return groups.map((group) => ({
+			colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
+			label: group.bars[0].repeatCount != null ? `${group.bars[0].repeatCount}×` : "",
+			inRepeat: group.bars[0].inRepeat
+		}));
+	};
 
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
 	const lines = computed((): RenderBar[][] => {
@@ -150,11 +171,8 @@
 		if (strokeIdx === bar.beats * time - 1) {
 			ret.push("before-bar");
 		}
-		if (bar.repeatStart && strokeIdx === 0) {
-			ret.push("repeat-start");
-		}
-		if (bar.repeatEnd && strokeIdx === bar.beats * time - 1) {
-			ret.push("repeat-end");
+		if (bar.inRepeat) {
+			ret.push("repeat");
 		}
 		if (tripletBeats.value?.[rowIdx][bar.barIdx * 4 + Math.floor(strokeIdx / time)]) {
 			ret.push("is-triplet");
@@ -181,11 +199,8 @@
 		if (beat === bar.beats) {
 			ret.push("before-bar");
 		}
-		if (bar.repeatStart && beat === 1) {
-			ret.push("repeat-start");
-		}
-		if (bar.repeatEnd && beat === bar.beats) {
-			ret.push("repeat-end");
+		if (bar.inRepeat) {
+			ret.push("repeat");
 		}
 		return ret;
 	};
@@ -200,10 +215,10 @@
 
 		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`" translate="no">
 			<thead>
-				<tr v-if="line.some((bar) => bar.repeatCount != null)">
+				<tr v-if="line.some((bar) => bar.inRepeat)">
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
-					<td v-for="bar in line" :key="bar.barIdx" :colspan="bar.beats * sheet.time" class="repeat-count">{{bar.repeatCount != null ? `${bar.repeatCount}×` : ""}}</td>
+					<td v-for="(cell, cellIdx) in getRepeatCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat }">{{cell.label}}</td>
 				</tr>
 				<tr>
 					<th class="row-label"></th>
@@ -306,20 +321,41 @@
 				font-weight: bold;
 				text-align: left;
 				padding-left: 1mm;
+
+				// The white gaps make clear where one repeated block ends and the next one starts
+				&.repeat {
+					background-color: #ececec;
+					border-left: 1mm solid #fff;
+					border-right: 1mm solid #fff;
+				}
+			}
+
+			td.beat.repeat {
+				background-color: #ececec;
 			}
 		}
+
+		$stroke-height: 5.5mm;
 
 		td.stroke {
 			text-align: center;
 			font-size: 9pt;
-			height: 5.5mm;
+			height: $stroke-height;
 			vertical-align: middle;
 			padding: 0;
 			overflow: visible;
 
+			// Light horizontal lines above/between/below the instrument rows
+			border-top: 0.25pt solid #ddd;
+
 			.stroke-inner {
-				display: inline-block;
+				// A block of the full cell height, so that the background of overflowing texts covers the whole cell
+				display: block;
+				width: max-content;
+				margin: 0 auto;
 				white-space: nowrap;
+				height: $stroke-height;
+				line-height: $stroke-height;
 			}
 
 			&.is-triplet .stroke-inner {
@@ -338,19 +374,23 @@
 				border-left: 1.5pt solid #000;
 			}
 
-			&.repeat-start {
-				border-left: 3px double #000;
-			}
-
-			&.repeat-end {
-				border-right: 3px double #000;
+			&.repeat {
+				background-color: #ececec;
 			}
 		}
 
-		// Shouting texts overflow their (narrow) cells; the white background hides the table lines behind them
+		tbody tr:last-child td.stroke {
+			border-bottom: 0.25pt solid #ddd;
+		}
+
+		// Shouting texts overflow their (narrow) cells; the background hides the table lines behind them
 		tr.vocals .stroke-inner:not(:empty) {
 			background-color: #fff;
 			padding: 0 0.3mm;
+		}
+
+		tr.vocals td.stroke.repeat .stroke-inner:not(:empty) {
+			background-color: #ececec;
 		}
 
 		// Every beat has the same width, independent of the subdivision. The subdivision dividers are drawn at the
@@ -397,12 +437,6 @@
 		table.time-24 td.stroke.is-triplet {
 			&.stroke-7, &.stroke-15 {
 				border-right: 0.5pt solid #bbb;
-			}
-		}
-
-		table.time-12, table.time-16, table.time-20, table.time-24 {
-			td.stroke {
-				font-size: 7pt;
 			}
 		}
 	}
