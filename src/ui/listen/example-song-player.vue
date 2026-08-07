@@ -54,13 +54,13 @@
 	}));
 
 	const songParts = computed((): SongParts => {
-		let i = 1;
+		let i = 4;
 		const result = {
 			0: allInstruments([ "General Breaks", "Whistle in" ])
 		} as SongParts;
 		for(const part of normalizedSong.value) {
 			result[i] = allInstruments([ part.tuneName, part.patternName ], part.instruments);
-			i += part.length / 4;
+			i += part.length;
 		}
 		return result;
 	});
@@ -85,7 +85,7 @@
 	};
 
 	const setPosition = ($event: MouseEvent) => {
-		const length = 4 * getEffectiveSongLength(songParts.value, state.value);
+		const length = getEffectiveSongLength(songParts.value, state.value);
 		const el = songRef.value!;
 		const rect = el.getBoundingClientRect();
 		const percent = (el.scrollLeft + $event.clientX - rect.left) / el.scrollWidth;
