@@ -112,6 +112,50 @@ describe("getSheetPattern", () => {
 		]);
 	});
 
+	test("condenses a repeated multi-bar unit followed by a different bar", () => {
+		// Like a 3-bar phrase played twice with a closing bar
+		const unit = "X   X   X   X   " + "X X X X X X X X " + "X  X  X   X X   ";
+		const sheet = getSheetPattern(makePattern({
+			length: 28,
+			ls: unit.repeat(2) + "X               "
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 3, repeat: 2 },
+			{ startBar: 6, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("condenses a repeated multi-bar unit in the middle of a pattern", () => {
+		const a = "X   X   X   X   ";
+		const b = "X X X X X X X X ";
+		const c = "X  X  X   X X   ";
+		const sheet = getSheetPattern(makePattern({
+			length: 24,
+			ls: c + a + b + a + b + c
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 2, repeat: 2 },
+			{ startBar: 5, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("condenses two adjacent repeated blocks separately", () => {
+		const a = "X   X   X   X   ";
+		const b = "X X X X X X X X ";
+		const sheet = getSheetPattern(makePattern({
+			length: 16,
+			ls: a + a + b + b
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 2 },
+			{ startBar: 2, bars: 1, repeat: 2 }
+		]);
+	});
+
 	test("does not condense a pattern without repetitions", () => {
 		const sheet = getSheetPattern(makePattern({
 			length: 12,

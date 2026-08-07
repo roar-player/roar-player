@@ -39,20 +39,38 @@ const CONTENT_TYPES = {
 	".js": "text/javascript",
 	".json": "application/json",
 	".png": "image/png",
+	".gif": "image/gif",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".webp": "image/webp",
 	".svg": "image/svg+xml",
 	".ico": "image/x-icon",
 	".webmanifest": "application/manifest+json"
 };
 
-/** Serves the dist folder on an ephemeral localhost port. */
+/**
+ * Additional directories to serve while rendering the sheets, as a colon-separated list in the
+ * SHEETS_STATIC_DIRS environment variable. Each directory is served under its basename (e.g. /player/signs is
+ * served as /signs/…). Use this for images that are referenced by the tune descriptions but are not part of
+ * the build output. Note that animated GIFs appear as their first frame in the generated PDFs.
+ */
+const extraStaticDirs = (process.env.SHEETS_STATIC_DIRS ?? "").split(":").filter((dir) => dir !== "");
+
+/** Serves the dist folder (and the SHEETS_STATIC_DIRS) on an ephemeral localhost port. */
 async function serveDist() {
 	const server = createServer((req, res) => {
 		void (async () => {
 			const urlPath = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
-			const filePath = path.join(distDir, urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, ""));
+			let filePath = path.join(distDir, urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, ""));
+			for (const dir of extraStaticDirs) {
+				const prefix = `/${path.basename(dir)}/`;
+				if (urlPath.startsWith(prefix)) {
+					filePath = path.join(dir, urlPath.slice(prefix.length));
+				}
+			}
 			try {
 				const data = await readFile(filePath);
-				res.writeHead(200, { "Content-Type": CONTENT_TYPES[path.extname(filePath)] ?? "application/octet-stream" });
+				res.writeHead(200, { "Content-Type": CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? "application/octet-stream" });
 				res.end(data);
 			} catch {
 				res.writeHead(404);

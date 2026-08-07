@@ -90,6 +90,11 @@
 			font-size: 9pt;
 			margin-bottom: 3mm;
 
+			img {
+				max-height: 30mm;
+				width: auto;
+			}
+
 			h1, h2, h3 {
 				font-size: 11pt;
 				font-weight: bold;

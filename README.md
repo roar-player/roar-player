@@ -96,6 +96,11 @@ set `PUPPETEER_SKIP_DOWNLOAD=1` during `npm install` and `PUPPETEER_EXECUTABLE_P
 `npm run build-sheets`. For nice cover/contents pages, a Unicode TTF font should be available (e.g. the
 `fonts-dejavu`/`ttf-dejavu` package); rendering the sheets themselves uses the browser's fonts.
 
+If the tune descriptions reference images that are not part of the build output (e.g. sign images served from a
+separate folder), pass the folders in `SHEETS_STATIC_DIRS` (colon-separated); each folder is served under its
+basename while rendering, e.g. `SHEETS_STATIC_DIRS=/player/signs npm run build-sheets` serves `/player/signs/x.gif`
+as `signs/x.gif`. Animated GIFs appear as their first frame in the PDFs.
+
 Host it
 -------
 

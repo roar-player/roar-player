@@ -181,9 +181,16 @@
 	};
 
 	const getUpbeatStrokeClass = (rowIdx: number, strokeIdx: number): string[] => {
-		const ret = ["stroke"];
+		const time = sheet.value.time;
+		// The upbeat is aligned to the end of its beat, so its strokes get the positions at the end of the beat
+		// (which gives them the same subdivision dividers as the regular beats)
+		const position = (((strokeIdx - sheet.value.upbeat) % time) + time) % time;
+		const ret = ["stroke", `stroke-${position}`];
 		if (strokeIdx === 0) {
 			ret.push("after-bar");
+		}
+		if (position === time - 1) {
+			ret.push("before-beat");
 		}
 		if (strokeIdx === sheet.value.upbeat - 1) {
 			ret.push("before-bar");
@@ -376,8 +383,12 @@
 			}
 		}
 
-		// Shouting texts overflow their (narrow) cells; the background hides the table lines behind them
+		// Shouting texts overflow their (narrow) cells; the background hides the table lines behind them.
+		// position/z-index lift the text above the borders of the following cells, which would otherwise be
+		// painted on top of the overflowing part.
 		tr.vocals .stroke-inner:not(:empty) {
+			position: relative;
+			z-index: 1;
 			background-color: #fff;
 			padding: 0 0.3mm;
 		}
