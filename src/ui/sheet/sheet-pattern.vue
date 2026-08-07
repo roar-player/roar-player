@@ -1,8 +1,12 @@
 <script lang="ts">
 	/**
 	 * Renders the notes of a single pattern as a condensed, print-friendly table: instruments that play the same
-	 * thing are merged into one row, repeated bars are rendered once with a “×N” repeat marker, and long patterns
-	 * are wrapped into multiple lines of bars.
+	 * thing are merged into one row, repeated bars are rendered once with a repeat count (“3×” above the first
+	 * repeated bar), and long patterns are wrapped into multiple lines of bars.
+	 *
+	 * The table layout follows the pattern player: every beat has the same width independent of the subdivision,
+	 * overflowing stroke texts (e.g. shouts) stay visible, and beats that contain triplet strokes are colored and
+	 * get their subdivision dividers at thirds instead of quarters.
 	 */
 	export default {};
 </script>
@@ -24,6 +28,9 @@
 	const sheet = computed(() => getSheetPattern(props.pattern));
 
 	const barStrokes = computed(() => 4 * sheet.value.time);
+
+	/** How many bars are rendered per line. With a uniform beat width, two bars always fit an A4 page. */
+	const BARS_PER_LINE = 2;
 
 	type RenderBar = {
 		/** The index of the bar in the (uncondensed) pattern, determines the beat numbers shown above the bar. */
@@ -57,10 +64,9 @@
 
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
 	const lines = computed((): RenderBar[][] => {
-		const barsPerLine = Math.max(1, Math.floor(32 / barStrokes.value));
 		const ret: RenderBar[][] = [];
-		for (let i = 0; i < renderBars.value.length; i += barsPerLine) {
-			ret.push(renderBars.value.slice(i, i + barsPerLine));
+		for (let i = 0; i < renderBars.value.length; i += BARS_PER_LINE) {
+			ret.push(renderBars.value.slice(i, i + BARS_PER_LINE));
 		}
 		return ret;
 	});
@@ -77,6 +83,51 @@
 		}
 	};
 
+	const hasNote = (row: SheetRow, strokeIdx: number): boolean => {
+		const stroke = row.strokes[strokeIdx];
+		return stroke != null && stroke !== " ";
+	};
+
+	/**
+	 * For each row, whether each beat of the pattern body contains triplet strokes (strokes that are not on the
+	 * quarter grid of the beat). Only computed for the time signatures that can mix both grids (12 and 24).
+	 */
+	const tripletBeats = computed((): boolean[][] | undefined => {
+		const time = sheet.value.time;
+		if (time !== 12 && time !== 24) {
+			return undefined;
+		}
+		return sheet.value.rows.map((row) => {
+			const beats: boolean[] = [];
+			for (let beat = 0; beat * time < row.strokes.length - sheet.value.upbeat; beat++) {
+				let ternary = false;
+				for (let k = 0; k < time && !ternary; k++) {
+					ternary = k % 3 !== 0 && hasNote(row, sheet.value.upbeat + beat * time + k);
+				}
+				beats.push(ternary);
+			}
+			return beats;
+		});
+	});
+
+	/** Like tripletBeats, but for the (partial) beat formed by the upbeat strokes. */
+	const tripletUpbeat = computed((): boolean[] | undefined => {
+		const time = sheet.value.time;
+		if ((time !== 12 && time !== 24) || sheet.value.upbeat === 0) {
+			return undefined;
+		}
+		return sheet.value.rows.map((row) => {
+			for (let i = 0; i < sheet.value.upbeat; i++) {
+				// The upbeat is aligned to the end of its beat, and time is divisible by 3, so the position of the
+				// stroke within the triplet grid is ((i - upbeat) % 3 + 3) % 3.
+				if (((i - sheet.value.upbeat) % 3 + 3) % 3 !== 0 && hasNote(row, i)) {
+					return true;
+				}
+			}
+			return false;
+		});
+	});
+
 	const getStroke = (row: SheetRow, bar: RenderBar, strokeIdx: number): string => {
 		const stroke = row.strokes[sheet.value.upbeat + bar.barIdx * barStrokes.value + strokeIdx];
 		return !stroke || stroke === " " ? "" : (config.strokes[stroke] ?? stroke);
@@ -87,7 +138,7 @@
 		return !stroke || stroke === " " ? "" : (config.strokes[stroke] ?? stroke);
 	};
 
-	const getStrokeClass = (bar: RenderBar, strokeIdx: number): string[] => {
+	const getStrokeClass = (rowIdx: number, bar: RenderBar, strokeIdx: number): string[] => {
 		const time = sheet.value.time;
 		const ret = ["stroke", `stroke-${strokeIdx % time}`];
 		if (strokeIdx === 0) {
@@ -104,6 +155,23 @@
 		}
 		if (bar.repeatEnd && strokeIdx === bar.beats * time - 1) {
 			ret.push("repeat-end");
+		}
+		if (tripletBeats.value?.[rowIdx][bar.barIdx * 4 + Math.floor(strokeIdx / time)]) {
+			ret.push("is-triplet");
+		}
+		return ret;
+	};
+
+	const getUpbeatStrokeClass = (rowIdx: number, strokeIdx: number): string[] => {
+		const ret = ["stroke"];
+		if (strokeIdx === 0) {
+			ret.push("after-bar");
+		}
+		if (strokeIdx === sheet.value.upbeat - 1) {
+			ret.push("before-bar");
+		}
+		if (tripletUpbeat.value?.[rowIdx]) {
+			ret.push("is-triplet");
 		}
 		return ret;
 	};
@@ -130,7 +198,7 @@
 			<span v-if="sheet.dynamics" class="bb-sheet-pattern-dynamics">({{i18n.t(`sheet.${sheet.dynamics}`)}})</span>
 		</h3>
 
-		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`">
+		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`" translate="no">
 			<thead>
 				<tr v-if="line.some((bar) => bar.repeatCount != null)">
 					<th class="row-label"></th>
@@ -146,22 +214,21 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="(row, rowIdx) in sheet.rows" :key="rowIdx">
+				<tr v-for="(row, rowIdx) in sheet.rows" :key="rowIdx" :class="{ vocals: row.instruments.includes('ot') }">
 					<th class="row-label">{{getRowLabel(row)}}</th>
 					<template v-if="lineIdx === 0 && sheet.upbeat > 0">
 						<td
 							v-for="strokeIdx in sheet.upbeat"
 							:key="strokeIdx"
-							class="stroke"
-							:class="{ 'after-bar': strokeIdx === 1, 'before-bar': strokeIdx === sheet.upbeat }"
-						>{{getUpbeatStroke(row, strokeIdx - 1)}}</td>
+							:class="getUpbeatStrokeClass(rowIdx, strokeIdx - 1)"
+						><span class="stroke-inner">{{getUpbeatStroke(row, strokeIdx - 1)}}</span></td>
 					</template>
 					<template v-for="bar in line" :key="bar.barIdx">
 						<td
 							v-for="strokeIdx in bar.beats * sheet.time"
 							:key="strokeIdx"
-							:class="getStrokeClass(bar, strokeIdx - 1)"
-						>{{getStroke(row, bar, strokeIdx - 1)}}</td>
+							:class="getStrokeClass(rowIdx, bar, strokeIdx - 1)"
+						><span class="stroke-inner">{{getStroke(row, bar, strokeIdx - 1)}}</span></td>
 					</template>
 				</tr>
 			</tbody>
@@ -171,6 +238,8 @@
 
 <style lang="scss">
 	.bb-sheet-pattern {
+		$beat-width: 18mm;
+
 		break-inside: avoid;
 		margin-bottom: 4mm;
 
@@ -245,7 +314,17 @@
 			font-size: 9pt;
 			height: 5.5mm;
 			vertical-align: middle;
-			border-right: 0.5pt solid #ccc;
+			padding: 0;
+			overflow: visible;
+
+			.stroke-inner {
+				display: inline-block;
+				white-space: nowrap;
+			}
+
+			&.is-triplet .stroke-inner {
+				color: #d63384;
+			}
 
 			&.before-beat {
 				border-right: 0.75pt solid #666;
@@ -268,31 +347,63 @@
 			}
 		}
 
-		table.time-2 td.stroke {
-			width: 9mm;
+		// Shouting texts overflow their (narrow) cells; the white background hides the table lines behind them
+		tr.vocals .stroke-inner:not(:empty) {
+			background-color: #fff;
+			padding: 0 0.3mm;
 		}
 
-		table.time-3 td.stroke {
-			width: 6mm;
+		// Every beat has the same width, independent of the subdivision. The subdivision dividers are drawn at the
+		// quarters of the beat (the same positions as in the pattern player).
+		$subdivisions: (
+			2: (0,),
+			3: (0, 1),
+			4: (0, 1, 2),
+			5: (0, 1, 2, 3),
+			6: (1, 3),
+			8: (1, 3, 5),
+			9: (2, 5),
+			12: (2, 5, 8),
+			16: (3, 7, 11),
+			20: (4, 9, 14),
+			24: (5, 11, 17)
+		);
+
+		@each $time, $dividers in $subdivisions {
+			table.time-#{$time} {
+				td.stroke {
+					max-width: calc(#{$beat-width} / #{$time});
+				}
+
+				.stroke-inner {
+					min-width: calc(#{$beat-width} / #{$time});
+				}
+
+				@each $i in $dividers {
+					td.stroke.stroke-#{$i}:not(.is-triplet) {
+						border-right: 0.5pt solid #bbb;
+					}
+				}
+			}
 		}
 
-		table.time-4 td.stroke {
-			width: 4.6mm;
+		// Beats that contain triplet strokes get their dividers at the thirds of the beat instead
+		table.time-12 td.stroke.is-triplet {
+			&.stroke-3, &.stroke-7 {
+				border-right: 0.5pt solid #bbb;
+			}
 		}
 
-		table.time-6 td.stroke {
-			width: 6mm;
+		table.time-24 td.stroke.is-triplet {
+			&.stroke-7, &.stroke-15 {
+				border-right: 0.5pt solid #bbb;
+			}
 		}
 
-		table.time-12 td.stroke,
-		table.time-20 td.stroke {
-			width: 3mm;
-			font-size: 7pt;
-		}
-
-		table.time-12 td.stroke:not(.before-beat, .before-bar, .stroke-2, .stroke-5, .stroke-8),
-		table.time-20 td.stroke:not(.before-beat, .before-bar, .stroke-4, .stroke-9, .stroke-14) {
-			border-right: none;
+		table.time-12, table.time-16, table.time-20, table.time-24 {
+			td.stroke {
+				font-size: 7pt;
+			}
 		}
 	}
 </style>
