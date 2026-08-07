@@ -78,6 +78,24 @@ after step 2 you can run `npm run dev-server` instead. This will start a webserv
 the built player. When you make any changes to a file, it detects that and rebuild just that file. Simply reload the page to
 see the updated player.
 
+Generate PDF tune sheets
+------------------------
+
+Printable A4 tune sheets can be generated automatically from the pattern definitions. The player renders them on the
+`#/sheet/<tune name>` route (and `#/sheet/` for a booklet preview of all tunes), condensed compared to the regular
+pattern view: instruments that play the same line are merged into one row (e.g. “Repi” and “Everybody else”),
+instruments that don't play anything are omitted, repeated bars are shown once with a repeat count (“×4”, with
+crescendos/decrescendos indicated textually), and a legend explains the stroke symbols.
+
+To turn them into PDFs, run `npm run build-sheets` after `npm run build`. This renders the sheet routes of the built
+player in headless Chromium (via Puppeteer) and writes one PDF per tune plus a `booklet.pdf` (with cover, table of
+contents, page numbers and bookmarks) to `dist/pdf/`.
+
+In environments where Puppeteer cannot download its own browser (e.g. a Docker build), install a system Chromium and
+set `PUPPETEER_SKIP_DOWNLOAD=1` during `npm install` and `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` when running
+`npm run build-sheets`. For nice cover/contents pages, a Unicode TTF font should be available (e.g. the
+`fonts-dejavu`/`ttf-dejavu` package); rendering the sheets themselves uses the browser's fonts.
+
 Host it
 -------
 

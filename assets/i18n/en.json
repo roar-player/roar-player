@@ -179,6 +179,18 @@
 		"sounds": "Sounds",
 		"download-mp3": "Download as MP3"
 	},
+	"sheet": {
+		"everybody": "Everybody",
+		"everybody-else": "Everybody else",
+		"crescendo": "soft to loud",
+		"decrescendo": "loud to soft",
+		"legend": "Legend",
+		"example-song": "Suggested structure",
+		"speed": "{{bpm}} bpm",
+		"booklet-title": "Tune sheets",
+		"tune-not-found": "This tune does not exist.",
+		"generated": "Generated from the {{appName}} pattern definitions"
+	},
 	"pattern-length-picker": {
 		"length": "Length: {{length}}"
 	},

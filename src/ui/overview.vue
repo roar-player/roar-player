@@ -7,6 +7,7 @@
 	import { History } from "../services/history";
 	import { Route, useRouter } from "../services/router";
 	import Compose from "./compose/compose.vue";
+	import Sheet from "./sheet/sheet.vue";
 	import { useRefWithOverride } from "../utils";
 	import { useI18n } from "../services/i18n";
 
@@ -41,17 +42,19 @@
 
 <template>
 	<div class="bb-overview">
-		<Update />
+		<template v-if="route.tab !== 'sheet'">
+			<Update />
 
-		<span class="bb-overview-help">
-			<Help />
-		</span>
+			<span class="bb-overview-help">
+				<Help />
+			</span>
 
-		<div class="nav nav-tabs">
-			<span class="bb-sidebar-toggle-container" ref="sidebarToggleContainer"></span>
-			<span class="nav-item"><a class="nav-link" :class="{ active: route.tab === 'listen' }" href="javascript:" @click="route.tab = 'listen'">{{i18n.t('overview.listen')}}</a></span>
-			<span class="nav-item"><a class="nav-link" :class="{ active: route.tab === 'compose' }" href="javascript:" @click="route.tab = 'compose'">{{i18n.t('overview.compose')}}</a></span>
-		</div>
+			<div class="nav nav-tabs">
+				<span class="bb-sidebar-toggle-container" ref="sidebarToggleContainer"></span>
+				<span class="nav-item"><a class="nav-link" :class="{ active: route.tab === 'listen' }" href="javascript:" @click="route.tab = 'listen'">{{i18n.t('overview.listen')}}</a></span>
+				<span class="nav-item"><a class="nav-link" :class="{ active: route.tab === 'compose' }" href="javascript:" @click="route.tab = 'compose'">{{i18n.t('overview.compose')}}</a></span>
+			</div>
+		</template>
 
 		<div class="bb-overview-content">
 			<template v-if="route.tab === 'listen'">
@@ -71,6 +74,10 @@
 					v-model:importData="route.importData"
 					:sidebarToggleContainer="sidebarToggleContainer"
 				/>
+			</template>
+
+			<template v-if="route.tab === 'sheet'">
+				<Sheet :tuneName="route.tuneName" />
 			</template>
 		</div>
 	</div>
