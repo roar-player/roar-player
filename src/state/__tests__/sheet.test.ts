@@ -165,7 +165,7 @@ describe("getSheetPattern", () => {
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 3, repeat: 1 }]);
 	});
 
-	test("does not condense bars whose volumes differ, but condenses a monotonic volume ramp with an annotation", () => {
+	test("condenses a monotonic volume ramp with a crescendo annotation on the segment", () => {
 		// Like the “8 up” break: two identical bars with a crescendo across the whole pattern
 		const crescendo: Record<number, number> = {};
 		for (let i = 0; i < 32; i++) {
@@ -177,8 +177,8 @@ describe("getSheetPattern", () => {
 			volumeHack: crescendo
 		}));
 
-		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2 }]);
-		expect(sheet.dynamics).toBe("crescendo");
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo" }]);
+		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("condenses periodic volumes without an annotation", () => {
@@ -199,8 +199,51 @@ describe("getSheetPattern", () => {
 			volumeHack: { 0: 1, 16: 0.5 }
 		}));
 
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2, dynamics: "decrescendo" }]);
+		expect(sheet.dynamics).toBeUndefined();
+	});
+
+	test("condenses a volume ramp in the middle of a pattern with an annotation on its segment", () => {
+		// Like the Afro Call: 2 identical loud bars, 2 identical bars ramping up, then a different bar
+		const sheet = getSheetPattern(makePattern({
+			length: 20,
+			ls: "X   X   X   X   ".repeat(2) + "X X X X X X X X ".repeat(2) + "X               ",
+			volumeHack: { 32: 0.25, 48: 0.5, 64: 1 }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 2 },
+			{ startBar: 2, bars: 1, repeat: 2, dynamics: "crescendo" },
+			{ startBar: 4, bars: 1, repeat: 1 }
+		]);
+		expect(sheet.dynamics).toBeUndefined();
+	});
+
+	test("condenses a fading block even when the volume jumps back up afterwards", () => {
+		// Like the Avenida Call Front: 4 bars fading out step by step, then a final loud bar
+		const sheet = getSheetPattern(makePattern({
+			length: 20,
+			ls: "X   X   X   X   ".repeat(4) + "X               ",
+			volumeHack: { 0: 1, 16: 0.75, 32: 0.5, 48: 0.25, 64: 1 }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 4, dynamics: "decrescendo" },
+			{ startBar: 4, bars: 1, repeat: 1 }
+		]);
+		expect(sheet.dynamics).toBeUndefined();
+	});
+
+	test("ignores volume changes during silent strokes", () => {
+		// The volume change at stroke 4 only affects silent strokes of the first bar and is inaudible
+		const sheet = getSheetPattern(makePattern({
+			length: 8,
+			ls: "X       X       ".repeat(2),
+			volumeHack: { 4: 0.5, 8: 1 }
+		}));
+
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2 }]);
-		expect(sheet.dynamics).toBe("decrescendo");
+		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("does not condense non-monotonic volume changes", () => {

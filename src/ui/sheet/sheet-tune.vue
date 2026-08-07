@@ -95,6 +95,19 @@
 				width: auto;
 			}
 
+			// Content marked with this class (raw HTML in the description Markdown) is only shown in the app
+			.no-sheet {
+				display: none;
+			}
+
+			// Tables (e.g. sign images with a caption) are placed next to each other, like in the app
+			table {
+				display: inline-table;
+				vertical-align: top;
+				text-align: center;
+				margin: 0 4mm 1mm 0;
+			}
+
 			h1, h2, h3 {
 				font-size: 11pt;
 				font-weight: bold;

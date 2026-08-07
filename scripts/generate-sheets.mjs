@@ -9,6 +9,13 @@
  * The sheets are rendered by headless Chromium. Puppeteer downloads a suitable browser during `yarn install`;
  * to use a system browser instead (e.g. in a Docker build), set PUPPETEER_SKIP_DOWNLOAD=1 during the install
  * and PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium when running this script.
+ *
+ * The booklet cover and the page footers can be customized through environment variables:
+ * - SHEETS_TITLE: the title on the cover page (default: the app name, i.e. the HTML title of the build)
+ * - SHEETS_SUBTITLE: the subtitle on the cover page (default: "Tune sheets")
+ * - SHEETS_SOURCE: where the sheets were generated from, e.g. a player URL (shown on the cover page)
+ * - SHEETS_LOGO: path to a PNG/JPEG logo shown on the cover page
+ * - SHEETS_VERSION: the version shown on the cover page and in the page footers (default: today's date)
  */
 
 import { createServer } from "node:http";
@@ -55,6 +62,12 @@ const CONTENT_TYPES = {
  * the build output. Note that animated GIFs appear as their first frame in the generated PDFs.
  */
 const extraStaticDirs = (process.env.SHEETS_STATIC_DIRS ?? "").split(":").filter((dir) => dir !== "");
+
+const titleOverride = process.env.SHEETS_TITLE;
+const subtitle = process.env.SHEETS_SUBTITLE ?? "Tune sheets";
+const source = process.env.SHEETS_SOURCE;
+const logoPath = process.env.SHEETS_LOGO;
+const version = process.env.SHEETS_VERSION ?? new Date().toISOString().slice(0, 10);
 
 /** Serves the dist folder (and the SHEETS_STATIC_DIRS) on an ephemeral localhost port. */
 async function serveDist() {
@@ -145,11 +158,33 @@ const PAGE_HEIGHT = 841.89;
 const PAGE_MARGIN = 42.52; // 15mm
 const TOC_ENTRIES_PER_PAGE = 40;
 
+/** Draws the page number and the version at the bottom of the page. */
+function drawFooter(page, font, pageNumber) {
+	const label = `${pageNumber} · Version ${version}`;
+	page.drawText(label, {
+		x: (page.getWidth() - font.widthOfTextAtSize(label, 9)) / 2,
+		y: 17,
+		size: 9,
+		font,
+		color: rgb(0.3, 0.3, 0.3)
+	});
+}
+
+/** Adds a page number/version footer to each page of a single-tune PDF. */
+async function stampFooters(pdfBytes) {
+	const doc = await PDFDocument.load(pdfBytes);
+	const font = await doc.embedFont(StandardFonts.Helvetica);
+	doc.getPages().forEach((page, i) => {
+		drawFooter(page, font, i + 1);
+	});
+	return await doc.save();
+}
+
 /** Combines the single-tune PDFs into a booklet with a cover page, table of contents, page numbers and bookmarks. */
-async function generateBooklet(appName, tunes) {
+async function generateBooklet(appName, tunes, rawPdfs) {
 	const singleDocs = [];
 	for (const tune of tunes) {
-		singleDocs.push(await PDFDocument.load(await readFile(path.join(outDir, `${tune.slug}.pdf`))));
+		singleDocs.push(await PDFDocument.load(rawPdfs.get(tune.slug)));
 	}
 
 	const tocPageCount = Math.ceil(tunes.length / TOC_ENTRIES_PER_PAGE);
@@ -167,20 +202,36 @@ async function generateBooklet(appName, tunes) {
 
 	// Cover page
 	const cover = booklet.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-	const coverTitle = encodableText(fontBold, appName);
+	if (logoPath) {
+		const logoBytes = await readFile(logoPath);
+		const logo = /\.png$/i.test(logoPath) ? await booklet.embedPng(logoBytes) : await booklet.embedJpg(logoBytes);
+		const scale = Math.min(150 / logo.height, 300 / logo.width);
+		const logoWidth = logo.width * scale;
+		const logoHeight = logo.height * scale;
+		cover.drawImage(logo, {
+			x: (PAGE_WIDTH - logoWidth) / 2,
+			y: PAGE_HEIGHT / 2 + 110,
+			width: logoWidth,
+			height: logoHeight
+		});
+	}
+	const coverTitle = encodableText(fontBold, titleOverride ?? appName);
 	cover.drawText(coverTitle, {
 		x: (PAGE_WIDTH - fontBold.widthOfTextAtSize(coverTitle, 32)) / 2,
 		y: PAGE_HEIGHT / 2 + 60,
 		size: 32,
 		font: fontBold
 	});
-	cover.drawText("Tune sheets", {
-		x: (PAGE_WIDTH - font.widthOfTextAtSize("Tune sheets", 20)) / 2,
+	const coverSubtitle = encodableText(font, subtitle);
+	cover.drawText(coverSubtitle, {
+		x: (PAGE_WIDTH - font.widthOfTextAtSize(coverSubtitle, 20)) / 2,
 		y: PAGE_HEIGHT / 2 + 20,
 		size: 20,
 		font
 	});
-	const generatedLine = `Generated from the pattern definitions on ${new Date().toISOString().slice(0, 10)}`;
+	const generatedLine = encodableText(font, source != null
+		? `Generated from ${source} - Version ${version}`
+		: `Generated from the pattern definitions - Version ${version}`);
 	cover.drawText(generatedLine, {
 		x: (PAGE_WIDTH - font.widthOfTextAtSize(generatedLine, 10)) / 2,
 		y: PAGE_HEIGHT / 2 - 20,
@@ -217,17 +268,10 @@ async function generateBooklet(appName, tunes) {
 		}
 	}
 
-	// Page numbers (all pages except the cover)
+	// Page number/version footers (all pages except the cover)
 	const pages = booklet.getPages();
 	for (let i = 1; i < pages.length; i++) {
-		const label = String(i + 1);
-		pages[i].drawText(label, {
-			x: (pages[i].getWidth() - font.widthOfTextAtSize(label, 9)) / 2,
-			y: 17,
-			size: 9,
-			font,
-			color: rgb(0.3, 0.3, 0.3)
-		});
+		drawFooter(pages[i], font, i + 1);
 	}
 
 	addOutline(booklet, entries.map((entry) => ({ title: entry.displayName, pageIndex: entry.startPage - 1 })));
@@ -256,6 +300,7 @@ async function main() {
 			throw new Error("No tunes found (window.bbSheetIndex is empty).");
 		}
 
+		const rawPdfs = new Map();
 		for (const tune of tunes) {
 			console.log(`Generating sheet for ${tune.name} (${tune.slug}.pdf)...`);
 			await page.evaluate((tuneName) => {
@@ -265,15 +310,19 @@ async function main() {
 				const sheet = document.querySelector(".bb-sheet-single");
 				return sheet != null && sheet.getAttribute("data-tune-name") === tuneName && sheet.querySelector(".bb-sheet-tune") != null;
 			}, {}, tune.name);
-			await page.pdf({
-				path: path.join(outDir, `${tune.slug}.pdf`),
+			rawPdfs.set(tune.slug, await page.pdf({
 				preferCSSPageSize: true,
 				printBackground: true
-			});
+			}));
 		}
 
+		// The footers are stamped into the single PDFs only after the booklet has copied their pages,
+		// so that the booklet pages get their booklet-wide page numbers instead
 		console.log("Generating booklet.pdf...");
-		await generateBooklet(appName, tunes);
+		await generateBooklet(appName, tunes, rawPdfs);
+		for (const tune of tunes) {
+			await writeFile(path.join(outDir, `${tune.slug}.pdf`), await stampFooters(rawPdfs.get(tune.slug)));
+		}
 
 		console.log(`Generated ${tunes.length} tune sheets and the booklet in ${outDir}.`);
 	} finally {

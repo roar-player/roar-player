@@ -2,7 +2,7 @@ FROM httpd:2.4-alpine
 
 RUN echo "AddType text/cache-manifest .manifest" >> /usr/local/apache2/conf/httpd.conf
 
-RUN apk --no-cache update && apk --no-cache add git nodejs yarn dumb-init chromium ttf-dejavu
+RUN apk --no-cache update && apk --no-cache add git nodejs yarn dumb-init chromium ttf-dejavu font-noto-emoji
 
 RUN adduser -D -h /opt/ror-player -s /bin/sh beatbox
 USER beatbox

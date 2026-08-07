@@ -79,6 +79,7 @@
 		return groups.map((group) => ({
 			colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
 			label: group.bars[0].repeatCount != null ? `${group.bars[0].repeatCount}×` : "",
+			dynamics: group.bars[0].repeatCount != null ? sheet.value.segments[group.bars[0].segmentIdx].dynamics : undefined,
 			inRepeat: group.bars[0].inRepeat
 		}));
 	};
@@ -225,7 +226,7 @@
 				<tr v-if="line.some((bar) => bar.inRepeat)">
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
-					<td v-for="(cell, cellIdx) in getRepeatCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat }">{{cell.label}}</td>
+					<td v-for="(cell, cellIdx) in getRepeatCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat }">{{cell.label}}<span v-if="cell.dynamics" class="repeat-dynamics">&#32;({{i18n.t(`sheet.${cell.dynamics}`)}})</span></td>
 				</tr>
 				<tr>
 					<th class="row-label"></th>
@@ -328,6 +329,11 @@
 				font-weight: bold;
 				text-align: left;
 				padding-left: 1mm;
+
+				.repeat-dynamics {
+					font-weight: normal;
+					font-style: italic;
+				}
 
 				// The white gaps make clear where one repeated block ends and the next one starts
 				&.repeat {

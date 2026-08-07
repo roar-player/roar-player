@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => ({
 	},
 	plugins: [
 		vuePlugin(),
-		mdPlugin({ mode: [Mode.HTML] }),
+		// html: true allows raw HTML in the tune descriptions, e.g. to mark content with class="no-sheet"
+		// so that it is not printed on the generated tune sheets
+		mdPlugin({ mode: [Mode.HTML], markdownIt: { html: true } }),
 		audioFilesPlugin(),
 		viteSingleFile()
 	],

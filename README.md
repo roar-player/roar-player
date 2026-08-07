@@ -101,6 +101,21 @@ separate folder), pass the folders in `SHEETS_STATIC_DIRS` (colon-separated); ea
 basename while rendering, e.g. `SHEETS_STATIC_DIRS=/player/signs npm run build-sheets` serves `/player/signs/x.gif`
 as `signs/x.gif`. Animated GIFs appear as their first frame in the PDFs.
 
+The booklet cover and the page footers can be customized through environment variables: `SHEETS_TITLE` (the
+title on the cover page, default: the app name, i.e. the HTML `<title>` of the build), `SHEETS_SUBTITLE` (the
+subtitle on the cover page, default "Tune sheets"), `SHEETS_SOURCE` (where the sheets were generated from, e.g. a
+player URL, shown on the cover page), `SHEETS_LOGO` (path to a PNG/JPEG logo shown on the cover page) and
+`SHEETS_VERSION` (shown on the cover page and in the footer of every page, defaults to today's date).
+
+Since the description Markdown may contain raw HTML, content that should only be shown in the app but not on the
+generated sheets can be wrapped in an element with the class `no-sheet`, e.g.
+`<div class="no-sheet">...</div>` (with blank lines around the tags, the content in between is still rendered
+as Markdown).
+
+Emoji (e.g. in tune names or descriptions) are rendered on the sheets if an emoji font is installed (e.g. the
+`font-noto-emoji` package); on the booklet's cover and contents pages (which are not rendered by the browser)
+they are replaced with "?".
+
 Host it
 -------
 
