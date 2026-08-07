@@ -38,6 +38,9 @@
 	.bb-sheet-legend {
 		break-inside: avoid;
 		color: #888;
+		border-top: 0.5pt solid #bbb;
+		padding-top: 1mm;
+		margin-top: 2mm;
 
 		ul {
 			list-style: none;

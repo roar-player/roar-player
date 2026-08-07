@@ -67,7 +67,7 @@ const titleOverride = process.env.SHEETS_TITLE;
 const subtitle = process.env.SHEETS_SUBTITLE ?? "Tune sheets";
 const source = process.env.SHEETS_SOURCE;
 const logoPath = process.env.SHEETS_LOGO;
-const version = process.env.SHEETS_VERSION ?? new Date().toISOString().slice(0, 10);
+const version = process.env.SHEETS_VERSION ?? new Date().toLocaleDateString("sv-SE"); // local date as YYYY-MM-DD
 
 /** Serves the dist folder (and the SHEETS_STATIC_DIRS) on an ephemeral localhost port. */
 async function serveDist() {
@@ -170,7 +170,7 @@ const TOC_ENTRIES_PER_PAGE = 40;
 
 /** Draws the page number and the version at the bottom of the page. */
 function drawFooter(page, font, pageNumber) {
-	const label = `${pageNumber} · Version ${version}`;
+	const label = `Page ${pageNumber} · Version ${version}`;
 	page.drawText(label, {
 		x: (page.getWidth() - font.widthOfTextAtSize(label, 9)) / 2,
 		y: 17,
@@ -240,8 +240,8 @@ async function generateBooklet(appName, tunes, rawPdfs) {
 		font
 	});
 	const generatedLine = encodableText(font, source != null
-		? `Generated from ${source} - Version ${version}`
-		: `Generated from the pattern definitions - Version ${version}`);
+		? `Generated from ${source}`
+		: "Generated from the pattern definitions");
 	cover.drawText(generatedLine, {
 		x: (PAGE_WIDTH - font.widthOfTextAtSize(generatedLine, 10)) / 2,
 		y: PAGE_HEIGHT / 2 - 20,

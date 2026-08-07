@@ -100,12 +100,21 @@
 				margin: 0 4mm 1mm 0;
 			}
 
-			h1, h2, h3 {
+			// Same style as the pattern titles (see sheet-pattern.vue)
+			h1, h2 {
 				font-size: 11pt;
 				font-weight: bold;
 				margin: 0 0 1mm 0;
-				border-bottom: none;
+				padding-bottom: 0.8mm;
+				border-bottom: 1px solid #eaecef;
+			}
+
+			h3 {
+				font-size: 10pt;
+				font-weight: bold;
+				margin: 0 0 1mm 0;
 				padding-bottom: 0;
+				border-bottom: none;
 			}
 
 			p {

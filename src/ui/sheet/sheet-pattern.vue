@@ -297,6 +297,8 @@
 			font-size: 11pt;
 			font-weight: bold;
 			margin: 0 0 1mm 0;
+			padding-bottom: 0.8mm;
+			border-bottom: 1px solid #eaecef;
 			// Keep the title together with (at least) the first line of the pattern
 			break-after: avoid;
 
@@ -354,6 +356,8 @@
 				font-weight: bold;
 				text-align: left;
 				padding-left: 1mm;
+				// Uniform height also for the cells without a repeat count (blocks continued from the previous line)
+				height: 4.8mm;
 
 				.repeat-dynamics {
 					font-weight: normal;
@@ -382,13 +386,6 @@
 		}
 
 		$stroke-height: 4.5mm;
-
-		// A small white gap between the instrument rows, interrupting the vertical lines (and the grey repeat
-		// background). The white border must be clearly wider than the bar lines (also after device pixel
-		// rounding) so that it wins the border-collapse conflict at the intersections.
-		tbody tr:not(:first-child) td.stroke {
-			border-top: 0.8mm solid #fff;
-		}
 
 		td.stroke {
 			text-align: center;
