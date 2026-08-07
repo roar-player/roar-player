@@ -31,13 +31,13 @@
 		return descriptionFilename ? getTuneDescriptionHtml(descriptionFilename) : undefined;
 	});
 
-	const exampleSongText = computed(() => props.tune.exampleSong?.map((entry) => {
+	const exampleSongTexts = computed(() => props.tune.exampleSong?.map((song) => song.map((entry) => {
 		if (typeof entry === "string") {
 			return getLocalizedDisplayName(entry);
 		}
 		const patternName = getLocalizedDisplayName(entry.patternName);
 		return entry.tuneName != null ? `${getLocalizedDisplayName(entry.tuneName)}: ${patternName}` : patternName;
-	}).join(" – "));
+	}).join(" – ")));
 </script>
 
 <template>
@@ -56,8 +56,8 @@
 			:pattern="pattern"
 		/>
 
-		<p v-if="exampleSongText" class="bb-sheet-tune-example-song">
-			<strong>{{i18n.t("sheet.example-song")}}:</strong>{{" "}}{{exampleSongText}}
+		<p v-for="(songText, songIdx) in exampleSongTexts" :key="songIdx" class="bb-sheet-tune-example-song">
+			<strong>{{i18n.t("sheet.example-song")}}:</strong>{{" "}}{{songText}}
 		</p>
 
 		<SheetLegend v-if="showLegend" :tunes="[tune]" />

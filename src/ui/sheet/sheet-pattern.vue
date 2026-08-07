@@ -345,9 +345,6 @@
 			padding: 0;
 			overflow: visible;
 
-			// Light horizontal lines above/between/below the instrument rows
-			border-top: 0.25pt solid #ddd;
-
 			.stroke-inner {
 				// A block of the full cell height, so that the background of overflowing texts covers the whole cell
 				display: block;
@@ -377,10 +374,6 @@
 			&.repeat {
 				background-color: #ececec;
 			}
-		}
-
-		tbody tr:last-child td.stroke {
-			border-bottom: 0.25pt solid #ddd;
 		}
 
 		// Shouting texts overflow their (narrow) cells; the background hides the table lines behind them
