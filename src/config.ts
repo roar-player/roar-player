@@ -105,6 +105,7 @@ const config: Config = {
 		},
 		ta: {
 			name: () => getI18n().t("config.instruments-ta"),
+            sheetShortName: () => "Tambi",
 			strokes: [ "X", "r", "f" ]
 		},
 		ag: {
@@ -120,6 +121,13 @@ const config: Config = {
 			strokes: [ "w", "y", "A", "B", "D", "E", "F", "G", "J", "K", "L", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "Y", "Z", "9", "8", "7", "6", "5", "b", "c", "d", "e", "g", "q", "j", "k", "m", "n", "u", "v", "x", "i", "l", "p", "$", "%", "&", "'", "(", ")", "*", ",", "-", "?", ":", ";", "<", "=", ">", "K", "[", "\\", "^", "_", "`", "{", "|", "}", "~", "À", "Á", "Â", "Ã", "Ä", "Å", "Æ", "Ç", "È", "É", "Ê", "Ë", "Ì", "Í", "Î", "Ï", "İ", "Ǐ", "Ī", "Ĩ", "Į", "Ĳ", "Ð", "Ñ", "Ò", "Ó", "Ô" ]
 		}
 	},
+
+    sheetAliases: [
+        { name: () => "Low & Mid Surdo", instruments: [ "ls", "ms" ] },
+        { name: () => "Low & Hi Surdo", instruments: [ "ls", "hs" ] },
+        { name: () => "Mid & Hi Surdo", instruments: [ "ms", "hs" ] },
+        { name: () => "All Surdos", instruments: [ "ls", "ms", "hs" ] }
+    ],
 
 	strokes: {
 		"X": "X",
