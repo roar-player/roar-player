@@ -164,6 +164,7 @@
     },
     "example-song-player": {
         "listen": "Abspielen",
+        "stop": "Stopp",
         "download-mp3": "Als MP3 herunterladen"
     },
     "pattern-length-picker": {

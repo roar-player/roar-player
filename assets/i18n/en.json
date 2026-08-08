@@ -170,6 +170,7 @@
 	},
 	"example-song-player": {
 		"listen": "Listen",
+		"stop": "Stop",
 		"download-mp3": "Download as MP3"
 	},
 	"tune-info": {
