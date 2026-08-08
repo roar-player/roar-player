@@ -50,12 +50,14 @@
 		sheet.value.segments.forEach((segment, segmentIdx) => {
 			for (let i = 0; i < segment.bars; i++) {
 				const barIdx = segment.startBar + i;
+				// An open segment is a repeat block even with repeat 1 (a single bar repeated indefinitely)
+				const isRepeat = segment.repeat > 1 || !!segment.open;
 				ret.push({
 					barIdx,
 					beats: Math.min(4, props.pattern.length - barIdx * 4),
 					segmentIdx,
-					inRepeat: segment.repeat > 1,
-					repeatCount: segment.repeat > 1 && i === 0 ? segment.repeat : undefined
+					inRepeat: isRepeat,
+					repeatCount: isRepeat && i === 0 ? segment.repeat : undefined
 				});
 			}
 		});

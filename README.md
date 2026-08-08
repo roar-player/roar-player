@@ -117,7 +117,8 @@ The sheets can be customized further:
   all patterns are hidden are left out entirely.
 * A pattern with `sheetOpenRepeats: [<beat numbers>]` renders the repeated block starting at that beat number
   (1-based, as printed on the sheet) with “N×” instead of the repeat count, for parts that are repeated
-  indefinitely. This only has an effect if the block is detected as a repetition.
+  indefinitely. If no repetition is detected at that beat, the single bar starting there is rendered as an
+  open-ended (“N×”) repeat block instead.
 * `sheetAliases` in `src/config.ts` defines names for instrument groups (e.g. “Surdos” for Surdo 1 + Surdo 2)
   that are used as row labels when all instruments of the group play the same line, and
   `instruments[key].sheetShortName` defines a shorter instrument name used when a row lists several names.

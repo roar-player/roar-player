@@ -305,6 +305,43 @@ describe("getSheetPattern", () => {
 		]);
 	});
 
+	test("turns a single bar into an open-ended repeat block when no repetition is detected there", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 12,
+			ls: "X               " + "X X X X X X X X " + "XXXXXXXXXXXXXXXX",
+			sheetOpenRepeats: [5]
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 1, repeat: 1, open: true },
+			{ startBar: 2, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("turns the first bar into an open-ended repeat block when no repetition is detected there", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 8,
+			ls: "X               " + "X X X X X X X X ",
+			sheetOpenRepeats: [1]
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1, open: true },
+			{ startBar: 1, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("ignores sheetOpenRepeats beats that do not fall on a bar start", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 8,
+			ls: "X               " + "X X X X X X X X ",
+			sheetOpenRepeats: [6, 99]
+		}));
+
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 1 }]);
+	});
+
 	test("does not condense patterns whose length is not a multiple of 4 beats", () => {
 		const sheet = getSheetPattern(makePattern({
 			length: 2,
