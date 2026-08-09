@@ -12,9 +12,9 @@
 </script>
 
 <script setup lang="ts">
-	import config from "../../config";
+	import config, { Instrument } from "../../config";
 	import { Pattern } from "../../state/pattern";
-	import { getSheetPattern, SheetRow } from "../../state/sheet";
+	import { getSheetPattern, SheetRow, SheetSegment } from "../../state/sheet";
 	import { computed } from "vue";
 	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
 
@@ -87,19 +87,43 @@
 		return groups.map((group) => {
 			const segment = sheet.value.segments[group.bars[0].segmentIdx];
 			const startsSegment = group.bars[0].barIdx === segment.startBar;
-			const annotation = startsSegment ? (segment.dynamics ?? segment.volume) : undefined;
-			const annotationText = annotation && i18n.t(`sheet.${annotation}`);
+			const annotationText = startsSegment ? getAnnotationText(segment) : undefined;
 			const hasIndicator = group.bars[0].hasIndicator;
 			return {
 				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
 				label: group.bars[0].repeatCount != null ? `${segment.open ? "N" : group.bars[0].repeatCount}×` : "",
-				// Next to a repeat count the annotation is parenthesized; above a non-repeated segment it stands alone
-				annotationText: annotationText && (group.bars[0].repeatCount != null ? ` (${annotationText})` : annotationText),
+				// Next to a repeat count the annotation is separated from it by a space
+				annotationText: annotationText && (group.bars[0].repeatCount != null ? ` ${annotationText}` : annotationText),
 				inRepeat: group.bars[0].inRepeat,
 				startsBlock: hasIndicator && startsSegment,
 				endsBlock: hasIndicator && group.bars[group.bars.length - 1].barIdx === segment.startBar + segment.bars - 1
 			};
 		});
+	};
+
+	/** All sounding instruments of the pattern, used to invert the instrument list of a volume annotation. */
+	const allInstruments = computed(() => sheet.value.rows.flatMap((row) => row.instruments));
+
+	/**
+	 * The parenthesized volume annotation of a segment, e.g. “(soft to loud)”. If the annotation does not apply
+	 * to all sounding instruments, they are named, e.g. “(Snare: soft to loud)” — or, when that is the majority
+	 * of the instruments, the others are, e.g. “(All but Repi: soft)”.
+	 */
+	const getAnnotationText = (segment: SheetSegment): string | undefined => {
+		const annotation = segment.dynamics ?? segment.volume;
+		if (!annotation) {
+			return undefined;
+		}
+		let text = i18n.t(`sheet.${annotation}`);
+		if (segment.annotationInstruments) {
+			const affected = segment.annotationInstruments;
+			const others = allInstruments.value.filter((instrument) => !affected.includes(instrument));
+			const names = affected.length > others.length
+				? i18n.t("sheet.all-but", { instruments: getInstrumentsLabel(others) })
+				: getInstrumentsLabel(affected);
+			text = `${names}: ${text}`;
+		}
+		return `(${text})`;
 	};
 
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
@@ -113,16 +137,13 @@
 
 	const displayName = computed(() => getLocalizedDisplayName(props.pattern.displayName || props.patternName));
 
-	const getRowLabel = (row: SheetRow): string => {
-		if (row.label === "everybody") {
-			return i18n.t("sheet.everybody");
-		} else if (row.label === "everybody-else") {
-			return i18n.t("sheet.everybody-else");
-		}
-
-		// Replace complete alias groups (e.g. “Dobra 1, Dobra 2” → “Dobras”) with their alias name; if the row
-		// then still lists several names, the instruments use their short names (e.g. “Tambi” for “Tamborim”)
-		const remaining = new Set(row.instruments);
+	/**
+	 * Names a group of instruments: complete alias groups (e.g. “Dobra 1, Dobra 2” → “Dobras”) are replaced
+	 * with their alias name; if the result then still lists several names, the instruments use their short
+	 * names (e.g. “Tambi” for “Tamborim”).
+	 */
+	const getInstrumentsLabel = (instruments: Instrument[]): string => {
+		const remaining = new Set(instruments);
 		const parts: Array<{ order: number; name: (short: boolean) => string }> = [];
 		for (const alias of [...(config.sheetAliases ?? [])].sort((a, b) => b.instruments.length - a.instruments.length)) {
 			if (alias.instruments.length > 0 && alias.instruments.every((instrument) => remaining.has(instrument))) {
@@ -142,6 +163,15 @@
 			});
 		}
 		return parts.sort((a, b) => a.order - b.order).map((part) => part.name(parts.length > 1)).join(", ");
+	};
+
+	const getRowLabel = (row: SheetRow): string => {
+		if (row.label === "everybody") {
+			return i18n.t("sheet.everybody");
+		} else if (row.label === "everybody-else") {
+			return i18n.t("sheet.everybody-else");
+		}
+		return getInstrumentsLabel(row.instruments);
 	};
 
 	const hasNote = (row: SheetRow, strokeIdx: number): boolean => {

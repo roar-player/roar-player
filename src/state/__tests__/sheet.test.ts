@@ -390,6 +390,34 @@ describe("getSheetPattern", () => {
 		]);
 	});
 
+	test("records the instruments that a volume annotation applies to", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 12,
+			ls: "X   X   X   X   " + "X X X X X X X X " + "XXXXXXXXXXXXXXXX",
+			ag: "o a o a o a o a ".repeat(3),
+			volumeHack: { ag: { 16: 0.5, 32: 1 } }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 1, repeat: 1, volume: "soft", annotationInstruments: ["ag"] },
+			{ startBar: 2, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("records the instruments that a repeated block's ramp annotation applies to", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 8,
+			ls: "X   X   X   X   ".repeat(2),
+			ag: "o a o a o a o a ".repeat(2),
+			volumeHack: { ag: { 0: 0.5, 16: 1 } }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo", annotationInstruments: ["ag"] }
+		]);
+	});
+
 	test("does not annotate volumes of rows that never change", () => {
 		// A constant per-instrument volume is a mix balance, not a volume indication for the players
 		const sheet = getSheetPattern(makePattern({

@@ -85,8 +85,9 @@ Printable A4 tune sheets can be generated automatically from the pattern definit
 `#/sheet/<tune name>` route (and `#/sheet/` for a booklet preview of all tunes), condensed compared to the regular
 pattern view: instruments that play the same line are merged into one row (e.g. “Repi” and “Everybody else”),
 instruments that don't play anything are omitted, repeated bars are shown once with a repeat count (“×4”), volume
-changes (through the volume hack) are indicated textually above the affected bars (“soft to loud” for ramps,
-“soft”/“loud” for constant sections), and a legend explains the stroke symbols.
+changes (through the volume hack) are indicated textually above the affected bars (“(soft to loud)” for ramps,
+“(soft)”/“(loud)” for constant sections; if not all instruments are affected, they are named, e.g.
+“(Snare: soft to loud)” or “(All but Repi: soft)”), and a legend explains the stroke symbols.
 
 To turn them into PDFs, run `npm run build-sheets` after `npm run build`. This renders the sheet routes of the built
 player in headless Chromium (via Puppeteer) and writes one PDF per tune plus a `booklet.pdf` (with cover, table of

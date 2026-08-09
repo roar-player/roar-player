@@ -188,6 +188,7 @@
 		"decrescendo": "loud to soft",
 		"soft": "soft",
 		"loud": "loud",
+		"all-but": "All but {{instruments}}",
 		"speed": "{{bpm}} bpm",
 		"booklet-title": "Tune sheets",
 		"tune-not-found": "This tune does not exist.",
