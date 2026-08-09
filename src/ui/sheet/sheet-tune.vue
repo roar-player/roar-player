@@ -107,6 +107,9 @@
 				margin: 0 0 1mm 0;
 				padding-bottom: 0.8mm;
 				border-bottom: 1px solid #eaecef;
+				// Keep the heading together with (at least the first line of) its content instead of leaving
+				// it behind alone at the bottom of a page
+				break-after: avoid;
 			}
 
 			h3 {
@@ -115,6 +118,7 @@
 				margin: 0 0 1mm 0;
 				padding-bottom: 0;
 				border-bottom: none;
+				break-after: avoid;
 			}
 
 			p {

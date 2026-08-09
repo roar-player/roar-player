@@ -50,8 +50,10 @@ const patternPropertiesValidator = z.object({
 	/**
 	 * Beat numbers (1-based, as printed on the tune sheets) at which an indefinitely repeated block starts.
 	 * The repeat count of such a block is rendered as “N×” instead of the number of times it appears in the
-	 * pattern. If no repetition is detected at that beat, the single bar starting there is rendered as an
-	 * open-ended (“N×”) repeat block instead.
+	 * pattern. The repetition detection is re-anchored at such a beat: no repetition may extend across it, so
+	 * a repetition starting there is detected even if a different phase of it starts earlier in the pattern.
+	 * If no repetition is detected at that beat, the single bar starting there is rendered as an open-ended
+	 * (“N×”) repeat block instead.
 	 */
 	sheetOpenRepeats: z.array(z.number()).optional()
 });

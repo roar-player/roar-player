@@ -87,7 +87,6 @@ describe("getSheetPattern", () => {
 
 		expect(sheet.totalBars).toBe(4);
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 4 }]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("condenses a repeated two-bar unit", () => {
@@ -178,7 +177,6 @@ describe("getSheetPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo" }]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("condenses periodic volumes without an annotation", () => {
@@ -189,7 +187,6 @@ describe("getSheetPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2 }]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("annotates a decrescendo", () => {
@@ -200,7 +197,6 @@ describe("getSheetPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2, dynamics: "decrescendo" }]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("condenses a volume ramp in the middle of a pattern with an annotation on its segment", () => {
@@ -216,7 +212,6 @@ describe("getSheetPattern", () => {
 			{ startBar: 2, bars: 1, repeat: 2, dynamics: "crescendo" },
 			{ startBar: 4, bars: 1, repeat: 1 }
 		]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("condenses a fading block even when the volume jumps back up afterwards", () => {
@@ -231,7 +226,6 @@ describe("getSheetPattern", () => {
 			{ startBar: 0, bars: 1, repeat: 4, dynamics: "decrescendo" },
 			{ startBar: 4, bars: 1, repeat: 1 }
 		]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("ignores volume changes during silent strokes", () => {
@@ -243,7 +237,6 @@ describe("getSheetPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2 }]);
-		expect(sheet.dynamics).toBeUndefined();
 	});
 
 	test("does not condense non-monotonic volume changes", () => {
@@ -253,8 +246,11 @@ describe("getSheetPattern", () => {
 			volumeHack: { 0: 1, 8: 0.2, 16: 0.9, 24: 0.3 }
 		}));
 
-		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 1 }]);
-		expect(sheet.dynamics).toBeUndefined();
+		// The bars are not condensed; each bar fades on its own, so each gets its own annotation
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1, dynamics: "decrescendo" },
+			{ startBar: 1, bars: 1, repeat: 1, dynamics: "decrescendo" }
+		]);
 	});
 
 	test("keeps instruments with different volume curves in separate rows", () => {
@@ -330,6 +326,80 @@ describe("getSheetPattern", () => {
 			{ startBar: 0, bars: 1, repeat: 1, open: true },
 			{ startBar: 1, bars: 1, repeat: 1 }
 		]);
+	});
+
+	test("re-anchors the repetition detection at a sheetOpenRepeats beat", () => {
+		// Greedily, the a-b unit would be detected as repeating 3 times from bar 1; the open repeat at bar 3
+		// forces the detection to re-anchor there, so the phase starting at bar 3 is detected instead
+		const a = "X   X   X   X   ";
+		const b = "X X X X X X X X ";
+		const sheet = getSheetPattern(makePattern({
+			length: 28,
+			ls: "XXXXXXXXXXXXXXXX" + a + b + a + b + a + b,
+			sheetOpenRepeats: [13]
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 3, repeat: 1 },
+			{ startBar: 3, bars: 2, repeat: 2, open: true }
+		]);
+	});
+
+	test("treats repetitions with volume changes during their leading silence as identical and annotates the level", () => {
+		// Like the Levada Break Pequenyo: a loud intro bar, then a soft repeated block whose bars start with
+		// silence. The change to soft happens during the silence, so the repetitions sound identical (they are
+		// not a fade) and the whole block is annotated as soft.
+		const sheet = getSheetPattern(makePattern({
+			length: 12,
+			ls: "XXXXXXXXXXXXXXXX" + "    X   X   X   ".repeat(2),
+			volumeHack: { 16: 0.3 },
+			sheetOpenRepeats: [5]
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 1, repeat: 2, open: true, volume: "soft" }
+		]);
+	});
+
+	test("annotates a soft section by splitting it out of a non-repeated segment", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 12,
+			ls: "X   X   X   X   " + "X X X X X X X X " + "XXXXXXXXXXXXXXXX",
+			volumeHack: { 16: 0.5, 32: 1 }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 1, repeat: 1, volume: "soft" },
+			{ startBar: 2, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("annotates a volume ramp above the bars where it happens", () => {
+		// Like the Levada Break 3: the crescendo happens within the first bar, the second bar stays loud
+		const sheet = getSheetPattern(makePattern({
+			length: 8,
+			ls: "XXXXXXXXXXXXXXXX" + "X X X X X X X X ",
+			volumeHack: { 0: 0.3, 4: 0.6, 8: 0.8, 12: 1 }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1, dynamics: "crescendo" },
+			{ startBar: 1, bars: 1, repeat: 1 }
+		]);
+	});
+
+	test("does not annotate volumes of rows that never change", () => {
+		// A constant per-instrument volume is a mix balance, not a volume indication for the players
+		const sheet = getSheetPattern(makePattern({
+			length: 8,
+			ls: "X   X   X   X   " + "X X X X X X X X ",
+			ag: "o a o a o a o a ".repeat(2),
+			volumeHack: { ag: { 0: 0.5 } }
+		}));
+
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 1 }]);
 	});
 
 	test("ignores sheetOpenRepeats beats that do not fall on a bar start", () => {

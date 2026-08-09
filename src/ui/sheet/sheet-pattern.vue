@@ -41,6 +41,8 @@
 		segmentIdx: number;
 		/** Whether this bar is part of a repeated segment (highlighted with a grey background). */
 		inRepeat: boolean;
+		/** Whether this bar needs the indicator row above the beat numbers (repeat count or volume annotation). */
+		hasIndicator: boolean;
 		/** Set to the repeat count if this bar starts a repeated segment (rendered as “3×” above the bar). */
 		repeatCount?: number;
 	};
@@ -57,6 +59,7 @@
 					beats: Math.min(4, props.pattern.length - barIdx * 4),
 					segmentIdx,
 					inRepeat: isRepeat,
+					hasIndicator: isRepeat || segment.dynamics != null || segment.volume != null,
 					repeatCount: isRepeat && i === 0 ? segment.repeat : undefined
 				});
 			}
@@ -65,12 +68,13 @@
 	});
 
 	/**
-	 * The cells of the repeat indicator row above the beat numbers: one cell per segment (per line), so that the
-	 * grey background of a repeated block is continuous across its bars. Where a block actually starts/ends (as
-	 * opposed to being wrapped to another line), the bar line is extended up through the cell; at a line wrap the
-	 * grey runs to the edge of the line to indicate that the block continues.
+	 * The cells of the indicator row above the beat numbers (repeat counts and volume annotations): one cell per
+	 * segment (per line), so that the grey background of a repeated block is continuous across its bars. Where a
+	 * block actually starts/ends (as opposed to being wrapped to another line), the bar line is extended up
+	 * through the cell; at a line wrap the grey runs to the edge of the line to indicate that the block
+	 * continues. Volume annotations on non-repeated segments get the same start/end bar lines, but no grey.
 	 */
-	const getRepeatCells = (line: RenderBar[]) => {
+	const getIndicatorCells = (line: RenderBar[]) => {
 		const groups: Array<{ bars: RenderBar[] }> = [];
 		for (const bar of line) {
 			const last = groups[groups.length - 1];
@@ -82,13 +86,18 @@
 		}
 		return groups.map((group) => {
 			const segment = sheet.value.segments[group.bars[0].segmentIdx];
+			const startsSegment = group.bars[0].barIdx === segment.startBar;
+			const annotation = startsSegment ? (segment.dynamics ?? segment.volume) : undefined;
+			const annotationText = annotation && i18n.t(`sheet.${annotation}`);
+			const hasIndicator = group.bars[0].hasIndicator;
 			return {
 				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
 				label: group.bars[0].repeatCount != null ? `${segment.open ? "N" : group.bars[0].repeatCount}×` : "",
-				dynamics: group.bars[0].repeatCount != null ? segment.dynamics : undefined,
+				// Next to a repeat count the annotation is parenthesized; above a non-repeated segment it stands alone
+				annotationText: annotationText && (group.bars[0].repeatCount != null ? ` (${annotationText})` : annotationText),
 				inRepeat: group.bars[0].inRepeat,
-				startsBlock: group.bars[0].inRepeat && group.bars[0].barIdx === segment.startBar,
-				endsBlock: group.bars[0].inRepeat && group.bars[group.bars.length - 1].barIdx === segment.startBar + segment.bars - 1
+				startsBlock: hasIndicator && startsSegment,
+				endsBlock: hasIndicator && group.bars[group.bars.length - 1].barIdx === segment.startBar + segment.bars - 1
 			};
 		});
 	};
@@ -246,17 +255,14 @@
 
 <template>
 	<div class="bb-sheet-pattern">
-		<h2>
-			{{displayName}}
-			<span v-if="sheet.dynamics" class="bb-sheet-pattern-dynamics">({{i18n.t(`sheet.${sheet.dynamics}`)}})</span>
-		</h2>
+		<h2>{{displayName}}</h2>
 
 		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`" translate="no">
 			<thead>
-				<tr v-if="line.some((bar) => bar.inRepeat)">
+				<tr v-if="line.some((bar) => bar.hasIndicator)">
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
-					<td v-for="(cell, cellIdx) in getRepeatCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat, 'repeat-start': cell.startsBlock, 'repeat-end': cell.endsBlock }">{{cell.label}}<span v-if="cell.dynamics" class="repeat-dynamics">&#32;({{i18n.t(`sheet.${cell.dynamics}`)}})</span></td>
+					<td v-for="(cell, cellIdx) in getIndicatorCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat, 'repeat-start': cell.startsBlock, 'repeat-end': cell.endsBlock }">{{cell.label}}<span v-if="cell.annotationText" class="repeat-dynamics">{{cell.annotationText}}</span></td>
 				</tr>
 				<tr>
 					<th class="row-label"></th>
@@ -303,12 +309,6 @@
 			border-bottom: 1px solid #eaecef;
 			// Keep the title together with (at least) the first line of the pattern
 			break-after: avoid;
-
-			.bb-sheet-pattern-dynamics {
-				font-weight: normal;
-				font-style: italic;
-				font-size: 9pt;
-			}
 		}
 
 		table {

@@ -84,8 +84,9 @@ Generate PDF tune sheets
 Printable A4 tune sheets can be generated automatically from the pattern definitions. The player renders them on the
 `#/sheet/<tune name>` route (and `#/sheet/` for a booklet preview of all tunes), condensed compared to the regular
 pattern view: instruments that play the same line are merged into one row (e.g. “Repi” and “Everybody else”),
-instruments that don't play anything are omitted, repeated bars are shown once with a repeat count (“×4”, with
-crescendos/decrescendos indicated textually), and a legend explains the stroke symbols.
+instruments that don't play anything are omitted, repeated bars are shown once with a repeat count (“×4”), volume
+changes (through the volume hack) are indicated textually above the affected bars (“soft to loud” for ramps,
+“soft”/“loud” for constant sections), and a legend explains the stroke symbols.
 
 To turn them into PDFs, run `npm run build-sheets` after `npm run build`. This renders the sheet routes of the built
 player in headless Chromium (via Puppeteer) and writes one PDF per tune plus a `booklet.pdf` (with cover, table of
@@ -117,8 +118,10 @@ The sheets can be customized further:
   all patterns are hidden are left out entirely.
 * A pattern with `sheetOpenRepeats: [<beat numbers>]` renders the repeated block starting at that beat number
   (1-based, as printed on the sheet) with “N×” instead of the repeat count, for parts that are repeated
-  indefinitely. If no repetition is detected at that beat, the single bar starting there is rendered as an
-  open-ended (“N×”) repeat block instead.
+  indefinitely. The repetition detection is re-anchored at such a beat: no repetition may extend across it, so
+  a repetition starting there is detected even if a different phase of it starts earlier in the pattern. If no
+  repetition is detected at that beat, the single bar starting there is rendered as an open-ended (“N×”) repeat
+  block instead.
 * `sheetAliases` in `src/config.ts` defines names for instrument groups (e.g. “Surdos” for Surdo 1 + Surdo 2)
   that are used as row labels when all instruments of the group play the same line, and
   `instruments[key].sheetShortName` defines a shorter instrument name used when a row lists several names.
