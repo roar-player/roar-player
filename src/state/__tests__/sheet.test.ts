@@ -405,6 +405,21 @@ describe("getSheetPattern", () => {
 		]);
 	});
 
+	test("keeps adjacent soft sections apart when they affect different instruments", () => {
+		const sheet = getSheetPattern(makePattern({
+			length: 12,
+			ls: "X   X   X   X   " + "X X X X X X X X " + "XXXXXXXXXXXXXXXX",
+			ag: "o a o a o a o a ".repeat(3),
+			volumeHack: { ls: { 16: 0.5 }, ag: { 16: 0.5, 32: 1 } }
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 1 },
+			{ startBar: 1, bars: 1, repeat: 1, volume: "soft" },
+			{ startBar: 2, bars: 1, repeat: 1, volume: "soft", annotationInstruments: ["ls"] }
+		]);
+	});
+
 	test("records the instruments that a repeated block's ramp annotation applies to", () => {
 		const sheet = getSheetPattern(makePattern({
 			length: 8,
