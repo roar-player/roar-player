@@ -12,9 +12,10 @@
 </script>
 
 <script setup lang="ts">
-	import config, { Instrument } from "../../config";
+	import config from "../../config";
 	import { Pattern } from "../../state/pattern";
-	import { getSheetPattern, SheetRow, SheetSegment } from "../../state/sheet";
+	import { getCondensedPattern, CondensedRow } from "../../state/condensed";
+	import { getAnnotationText, getInstrumentsLabel } from "../utils/condensed-annotations";
 	import { computed } from "vue";
 	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
 
@@ -25,7 +26,7 @@
 
 	const i18n = useI18n();
 
-	const sheet = computed(() => getSheetPattern(props.pattern));
+	const sheet = computed(() => getCondensedPattern(props.pattern));
 
 	const barStrokes = computed(() => 4 * sheet.value.time);
 
@@ -87,7 +88,7 @@
 		return groups.map((group) => {
 			const segment = sheet.value.segments[group.bars[0].segmentIdx];
 			const startsSegment = group.bars[0].barIdx === segment.startBar;
-			const annotationText = startsSegment ? getAnnotationText(segment) : undefined;
+			const annotationText = startsSegment ? getAnnotationText(segment, allInstruments.value) : undefined;
 			const hasIndicator = group.bars[0].hasIndicator;
 			return {
 				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
@@ -104,28 +105,6 @@
 	/** All sounding instruments of the pattern, used to invert the instrument list of a volume annotation. */
 	const allInstruments = computed(() => sheet.value.rows.flatMap((row) => row.instruments));
 
-	/**
-	 * The parenthesized volume annotation of a segment, e.g. “(soft to loud)”. If the annotation does not apply
-	 * to all sounding instruments, they are named, e.g. “(Snare: soft to loud)” — or, when that is the majority
-	 * of the instruments, the others are, e.g. “(All but Repi: soft)”.
-	 */
-	const getAnnotationText = (segment: SheetSegment): string | undefined => {
-		const annotation = segment.dynamics ?? segment.volume;
-		if (!annotation) {
-			return undefined;
-		}
-		let text = i18n.t(`sheet.${annotation}`);
-		if (segment.annotationInstruments) {
-			const affected = segment.annotationInstruments;
-			const others = allInstruments.value.filter((instrument) => !affected.includes(instrument));
-			const names = affected.length > others.length
-				? i18n.t("sheet.all-but", { instruments: getInstrumentsLabel(others) })
-				: getInstrumentsLabel(affected);
-			text = `${names}: ${text}`;
-		}
-		return `(${text})`;
-	};
-
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
 	const lines = computed((): RenderBar[][] => {
 		const ret: RenderBar[][] = [];
@@ -137,44 +116,16 @@
 
 	const displayName = computed(() => getLocalizedDisplayName(props.pattern.displayName || props.patternName));
 
-	/**
-	 * Names a group of instruments: complete alias groups (e.g. “Dobra 1, Dobra 2” → “Dobras”) are replaced
-	 * with their alias name; if the result then still lists several names, the instruments use their short
-	 * names (e.g. “Tambi” for “Tamborim”).
-	 */
-	const getInstrumentsLabel = (instruments: Instrument[]): string => {
-		const remaining = new Set(instruments);
-		const parts: Array<{ order: number; name: (short: boolean) => string }> = [];
-		for (const alias of [...(config.sheetAliases ?? [])].sort((a, b) => b.instruments.length - a.instruments.length)) {
-			if (alias.instruments.length > 0 && alias.instruments.every((instrument) => remaining.has(instrument))) {
-				for (const instrument of alias.instruments) {
-					remaining.delete(instrument);
-				}
-				parts.push({
-					order: Math.min(...alias.instruments.map((instrument) => config.instrumentKeys.indexOf(instrument))),
-					name: () => alias.name()
-				});
-			}
-		}
-		for (const instrument of remaining) {
-			parts.push({
-				order: config.instrumentKeys.indexOf(instrument),
-				name: (short) => (short && config.instruments[instrument].sheetShortName || config.instruments[instrument].name)()
-			});
-		}
-		return parts.sort((a, b) => a.order - b.order).map((part) => part.name(parts.length > 1)).join(", ");
-	};
-
-	const getRowLabel = (row: SheetRow): string => {
+	const getRowLabel = (row: CondensedRow): string => {
 		if (row.label === "everybody") {
-			return i18n.t("sheet.everybody");
+			return i18n.t("condensed.everybody");
 		} else if (row.label === "everybody-else") {
-			return i18n.t("sheet.everybody-else");
+			return i18n.t("condensed.everybody-else");
 		}
 		return getInstrumentsLabel(row.instruments);
 	};
 
-	const hasNote = (row: SheetRow, strokeIdx: number): boolean => {
+	const hasNote = (row: CondensedRow, strokeIdx: number): boolean => {
 		const stroke = row.strokes[strokeIdx];
 		return stroke != null && stroke !== " ";
 	};
@@ -219,12 +170,12 @@
 		});
 	});
 
-	const getStroke = (row: SheetRow, bar: RenderBar, strokeIdx: number): string => {
+	const getStroke = (row: CondensedRow, bar: RenderBar, strokeIdx: number): string => {
 		const stroke = row.strokes[sheet.value.upbeat + bar.barIdx * barStrokes.value + strokeIdx];
 		return !stroke || stroke === " " ? "" : (config.strokes[stroke] ?? stroke);
 	};
 
-	const getUpbeatStroke = (row: SheetRow, strokeIdx: number): string => {
+	const getUpbeatStroke = (row: CondensedRow, strokeIdx: number): string => {
 		const stroke = row.strokes[strokeIdx];
 		return !stroke || stroke === " " ? "" : (config.strokes[stroke] ?? stroke);
 	};

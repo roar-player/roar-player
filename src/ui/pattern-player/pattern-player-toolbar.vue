@@ -47,6 +47,7 @@
 	<div class="bb-pattern-editor-toolbar">
 		<PlayPauseStopButton :player="props.player" />
 		<PlaybackSettingsPicker v-model="playbackSettings" :default-speed="pattern.speed" />
+		<slot name="settings"/>
 
 		<div class="divider"></div>
 
@@ -86,6 +87,11 @@
 			margin-right: 0.5rem;
 			height: 34px;
 			border-left: 1px solid #dee2e6;
+
+			// A divider with nothing after it (e.g. the read-only toolbar without local changes) is not shown
+			&:last-child {
+				display: none;
+			}
 		}
 
 		button.has-changes {

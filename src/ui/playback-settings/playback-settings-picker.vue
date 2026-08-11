@@ -93,7 +93,7 @@
 </script>
 
 <template>
-	<HybridPopoverButton custom-class="bb-playback-settings" variant="light" :title="i18n.t('playback-settings-picker.title')">
+	<HybridPopoverButton custom-class="bb-playback-settings" :title="i18n.t('playback-settings-picker.title')">
 		<template #button>
 			<fa icon="sliders-h"/> <fa icon="caret-down"/>
 		</template>

@@ -181,14 +181,16 @@
 		"sounds": "Sounds",
 		"download-mp3": "Download as MP3"
 	},
-	"sheet": {
+	"condensed": {
 		"everybody": "Everybody",
 		"everybody-else": "Everybody else",
 		"crescendo": "soft to loud",
 		"decrescendo": "loud to soft",
 		"soft": "soft",
 		"loud": "loud",
-		"all-but": "All but {{instruments}}",
+		"all-but": "All but {{instruments}}"
+	},
+	"sheet": {
 		"speed": "{{bpm}} bpm",
 		"booklet-title": "Tune sheets",
 		"tune-not-found": "This tune does not exist.",
@@ -204,7 +206,11 @@
 		"restore-title": "Restore original",
 		"restore-message": "Are you sure that you want to revert your modifications and restore the original break?",
 		"restore-ok": "Restore",
-		"restore": "Restore original"
+		"restore": "Restore original",
+		"condensed-tooltip": "Toggle between the condensed view (repeated bars are shown only once, like on the tune sheets) and the full pattern",
+		"repeat-edit-hint": "This block is repeated. Edits inside it apply to all repetitions.",
+		"repeat-add": "Add one repetition",
+		"repeat-remove": "Remove one repetition"
 	},
 	"time-signature-picker": {
 		"time-signature": "Time signature: {{time}}"

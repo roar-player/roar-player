@@ -177,7 +177,11 @@
         "restore-title": "Original wiederherstellen",
         "restore-message": "Sollen die selbst komponierten Änderungen wirklich zurück gesetzt under originale Break wieder hergestellt werden?",
         "restore": "Original wiederherstellen",
-        "restore-ok": "Wiederherstellen"
+        "restore-ok": "Wiederherstellen",
+        "condensed-tooltip": "Zwischen der kompakten Ansicht (wiederholte Takte werden wie auf den Tune-Sheets nur einmal angezeigt) und dem vollständigen Pattern umschalten",
+        "repeat-edit-hint": "Dieser Block wird wiederholt. Änderungen darin gelten für alle Wiederholungen.",
+        "repeat-add": "Eine Wiederholung hinzufügen",
+        "repeat-remove": "Eine Wiederholung entfernen"
     },
     "upbeat-picker": {
         "upbeat": "Auftakt: {{upbeat}}"

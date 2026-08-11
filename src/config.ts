@@ -23,19 +23,20 @@ export type Config = {
 
 	instruments: Record<Instrument, {
 		name: () => string;
-		/** Optional shorter name shown on the tune sheets when the instrument shares a row with other instruments. */
-		sheetShortName?: () => string;
+		/** Optional shorter name used when the instrument is listed along with other instruments (e.g. on a shared row of the tune sheets or in a volume annotation). */
+		shortName?: () => string;
 		/** The strokes that this instrument can play. Defines what options the stroke picker will display. */
 		strokes: Array<Stroke>;
 	}>;
 
 	/**
-	 * Optional aliases for groups of instruments on the tune sheets: when all instruments of an alias play the
-	 * same line, the row is labelled with the alias name instead of the individual instrument names. A row whose
-	 * instruments can be fully expressed through aliases is labelled that way even if it would otherwise be
-	 * labelled “Everybody else” (and keeps its position in the instrument order).
+	 * Optional aliases for groups of instruments in the condensed pattern representation (tune sheets and
+	 * pattern player annotations): when all instruments of an alias play the same line, the row is labelled
+	 * with the alias name instead of the individual instrument names. A row whose instruments can be fully
+	 * expressed through aliases is labelled that way even if it would otherwise be labelled “Everybody else”
+	 * (and keeps its position in the instrument order).
 	 */
-	sheetAliases?: Array<{ name: () => string; instruments: Instrument[] }>;
+	instrumentAliases?: Array<{ name: () => string; instruments: Instrument[] }>;
 
 	/** Mapping each stroke to its representation in the notes as displayed to the user. */
 	strokes: Record<Stroke, string>;
@@ -105,7 +106,7 @@ const config: Config = {
 		},
 		ta: {
 			name: () => getI18n().t("config.instruments-ta"),
-            sheetShortName: () => "Tambi",
+            shortName: () => "Tambi",
 			strokes: [ "X", "r", "f" ]
 		},
 		ag: {
@@ -122,7 +123,7 @@ const config: Config = {
 		}
 	},
 
-    sheetAliases: [
+    instrumentAliases: [
         { name: () => "Low & Mid Surdo", instruments: [ "ls", "ms" ] },
         { name: () => "Low & Hi Surdo", instruments: [ "ls", "hs" ] },
         { name: () => "Mid & Hi Surdo", instruments: [ "ms", "hs" ] },
