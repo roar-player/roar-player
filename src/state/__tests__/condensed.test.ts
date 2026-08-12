@@ -399,7 +399,7 @@ describe("getCondensedPattern", () => {
 
 		expect(sheet.segments).toEqual([
 			{ startBar: 0, bars: 1, repeat: 1 },
-			{ startBar: 1, bars: 1, repeat: 1, volume: "soft", annotationInstruments: ["ag"] },
+			{ startBar: 1, bars: 1, repeat: 1, volume: "soft", annotationInstruments: ["ag"], annotationAllInstruments: ["ls", "ag"] },
 			{ startBar: 2, bars: 1, repeat: 1 }
 		]);
 	});
@@ -415,7 +415,7 @@ describe("getCondensedPattern", () => {
 		expect(sheet.segments).toEqual([
 			{ startBar: 0, bars: 1, repeat: 1 },
 			{ startBar: 1, bars: 1, repeat: 1, volume: "soft" },
-			{ startBar: 2, bars: 1, repeat: 1, volume: "soft", annotationInstruments: ["ls"] }
+			{ startBar: 2, bars: 1, repeat: 1, volume: "soft", annotationInstruments: ["ls"], annotationAllInstruments: ["ls", "ag"] }
 		]);
 	});
 
@@ -428,7 +428,28 @@ describe("getCondensedPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([
-			{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo", annotationInstruments: ["ag"] }
+			{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo", annotationInstruments: ["ag"], annotationAllInstruments: ["ls", "ag"] }
+		]);
+	});
+
+	test("ignores instruments that are silent within the annotated bars", () => {
+		// Like the Nellie the Elephant Break: everybody who plays in the ramping bars ramps, but another
+		// instrument (that is silent there) plays elsewhere in the pattern — the annotation still applies
+		// to everybody, without an “All but …” qualifier.
+		const sheet = getCondensedPattern(makePattern({
+			length: 12,
+			ls: "X   X   X   X   ".repeat(2) + "                ",
+			ag: "o a o a o a o a ".repeat(2) + "                ",
+			ot: "                ".repeat(2) + "A               ",
+			volumeHack: {
+				ls: { 0: 0.5, 16: 1 },
+				ag: { 0: 0.5, 16: 1 }
+			}
+		}));
+
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo" },
+			{ startBar: 2, bars: 1, repeat: 1 }
 		]);
 	});
 

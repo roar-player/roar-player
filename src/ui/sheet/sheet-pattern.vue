@@ -88,7 +88,7 @@
 		return groups.map((group) => {
 			const segment = sheet.value.segments[group.bars[0].segmentIdx];
 			const startsSegment = group.bars[0].barIdx === segment.startBar;
-			const annotationText = startsSegment ? getAnnotationText(segment, allInstruments.value) : undefined;
+			const annotationText = startsSegment ? getAnnotationText(segment) : undefined;
 			const hasIndicator = group.bars[0].hasIndicator;
 			return {
 				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
@@ -101,9 +101,6 @@
 			};
 		});
 	};
-
-	/** All sounding instruments of the pattern, used to invert the instrument list of a volume annotation. */
-	const allInstruments = computed(() => sheet.value.rows.flatMap((row) => row.instruments));
 
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
 	const lines = computed((): RenderBar[][] => {

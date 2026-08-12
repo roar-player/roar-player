@@ -53,10 +53,15 @@ export type CondensedSegment = {
 	 */
 	volume?: "soft" | "loud";
 	/**
-	 * The instruments that the dynamics/volume annotation applies to. Unset if it applies to all sounding
-	 * instruments of the pattern.
+	 * The instruments that the dynamics/volume annotation applies to. Unset if it applies to all instruments
+	 * that have sounding strokes within the annotated bars.
 	 */
 	annotationInstruments?: Instrument[];
+	/**
+	 * The instruments that have sounding strokes within the annotated bars, used as the base set when phrasing
+	 * the annotation (“Snare: …” vs “All but Repi: …”). Set if and only if annotationInstruments is set.
+	 */
+	annotationAllInstruments?: Instrument[];
 	/**
 	 * Set if the segment repeats indefinitely (through the pattern's openRepeats), rendered as “N×”.
 	 * Can also be set on a single bar with repeat 1 (when no repetition was detected at the requested beat),
@@ -294,9 +299,21 @@ type VolumeSpan = {
 	/** The index of the bar after the last bar of the span. */
 	end: number;
 	label: NonNullable<CondensedSegment["dynamics"] | CondensedSegment["volume"]>;
-	/** The instruments the span applies to. Unset if it applies to all sounding instruments. */
+	/** The instruments the span applies to. Unset if it applies to all instruments sounding within the span. */
 	instruments?: Instrument[];
+	/** The instruments that have sounding strokes within the span. Set if and only if instruments is set. */
+	allInstruments?: Instrument[];
 };
+
+/** Returns whether the row has at least one sounding stroke in the given stroke range (end exclusive). */
+function soundsWithin(row: RawRow, from: number, to: number): boolean {
+	for (let i = from; i < to; i++) {
+		if (row.strokes[i] !== " ") {
+			return true;
+		}
+	}
+	return false;
+}
 
 /**
  * Finds the sections of the (uncondensed) pattern body whose volumes (through the volume hack) should be
@@ -390,23 +407,30 @@ function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, t
 
 	// Determine which instruments each span applies to: the rows that actually ramp within a
 	// crescendo/decrescendo span, or that are softer/louder than the normal volume within a soft/loud span.
-	// If that covers all sounding instruments of the pattern, the span applies to everybody.
-	const totalInstruments = allRows.reduce((sum, row) => sum + row.instruments.length, 0);
+	// Only sounding strokes are considered — an instrument that is silent during the span is not part of the
+	// annotation. If the affected rows cover all instruments sounding within the span, it applies to everybody.
 	for (const span of spans) {
 		const from = barStart(span.start);
 		const to = Math.min(barStart(span.end), length);
 		const isLevel = span.label === "soft" || span.label === "loud";
 		const affected = rows.filter((row) => {
+			let first: number | undefined;
 			for (let i = from; i < to; i++) {
-				if (Math.abs(row.volumes[i] - (isLevel ? 1 : row.volumes[from])) > VOLUME_EPSILON) {
+				if (row.strokes[i] === " ") {
+					continue;
+				}
+				first ??= row.volumes[i];
+				if (Math.abs(row.volumes[i] - (isLevel ? 1 : first)) > VOLUME_EPSILON) {
 					return true;
 				}
 			}
 			return false;
 		});
 		const instruments = affected.flatMap((row) => row.instruments);
-		if (instruments.length < totalInstruments) {
+		const allInstruments = allRows.filter((row) => soundsWithin(row, from, to)).flatMap((row) => row.instruments);
+		if (instruments.length < allInstruments.length) {
 			span.instruments = instruments;
+			span.allInstruments = allInstruments;
 		}
 	}
 
@@ -419,8 +443,6 @@ function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, t
  * ranges become their own segments carrying the annotation.
  */
 function applyVolumeAnnotations(segments: CondensedSegment[], spans: VolumeSpan[], rows: RawRow[], upbeat: number, barStrokes: number): CondensedSegment[] {
-	const totalInstruments = rows.reduce((sum, row) => sum + row.instruments.length, 0);
-
 	const ret: CondensedSegment[] = [];
 	for (const segment of segments) {
 		if (segment.repeat > 1 || segment.open) {
@@ -444,8 +466,10 @@ function applyVolumeAnnotations(segments: CondensedSegment[], spans: VolumeSpan[
 					return false;
 				});
 				const instruments = affected.flatMap((row) => row.instruments);
-				if (instruments.length < totalInstruments) {
+				const allInstruments = rows.filter((row) => soundsWithin(row, from, to)).flatMap((row) => row.instruments);
+				if (instruments.length < allInstruments.length) {
 					segment.annotationInstruments = instruments;
+					segment.annotationAllInstruments = allInstruments;
 				}
 			} else {
 				const span = spans.find((candidate) => candidate.start <= segment.startBar && candidate.end >= end);
@@ -453,6 +477,7 @@ function applyVolumeAnnotations(segments: CondensedSegment[], spans: VolumeSpan[
 					segment.volume = span.label;
 					if (span.instruments) {
 						segment.annotationInstruments = span.instruments;
+						segment.annotationAllInstruments = span.allInstruments;
 					}
 				}
 			}
@@ -471,7 +496,7 @@ function applyVolumeAnnotations(segments: CondensedSegment[], spans: VolumeSpan[
 					bars: end - bar,
 					repeat: 1,
 					...(span.label === "crescendo" || span.label === "decrescendo" ? { dynamics: span.label } : { volume: span.label }),
-					...(span.instruments ? { annotationInstruments: span.instruments } : {})
+					...(span.instruments ? { annotationInstruments: span.instruments, annotationAllInstruments: span.allInstruments } : {})
 				});
 				bar = end;
 			} else {

@@ -131,13 +131,10 @@
 		return ret;
 	});
 
-	/** All sounding instruments of the pattern, used to invert the instrument list of a volume annotation. */
-	const allInstruments = computed(() => renderedPattern.value.rows.flatMap((row) => row.instruments));
-
 	/** The cells of the indicator row above the beat numbers: one per segment, carrying repeat count and/or volume annotation. */
 	const indicatorCells = computed(() => renderedPattern.value.segments.map((segment, segmentIdx) => {
 		const isRepeat = segment.repeat > 1 || !!segment.open;
-		const annotationText = getAnnotationText(segment, allInstruments.value);
+		const annotationText = getAnnotationText(segment);
 		return {
 			segmentIdx,
 			segment,

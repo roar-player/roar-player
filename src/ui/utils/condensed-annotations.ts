@@ -37,10 +37,10 @@ export function getInstrumentsLabel(instruments: Instrument[]): string {
 
 /**
  * The parenthesized volume annotation of a segment, e.g. “(soft to loud)”. If the annotation does not apply
- * to all sounding instruments (passed as allInstruments), they are named, e.g. “(Snare: soft to loud)” — or,
- * when that is the majority of the instruments, the others are, e.g. “(All but Repi: soft)”.
+ * to all instruments sounding within the annotated bars, they are named, e.g. “(Snare: soft to loud)” — or,
+ * when that is the majority of those instruments, the others are, e.g. “(All but Repi: soft)”.
  */
-export function getAnnotationText(segment: CondensedSegment, allInstruments: Instrument[]): string | undefined {
+export function getAnnotationText(segment: CondensedSegment): string | undefined {
 	const i18n = getI18n();
 	const annotation = segment.dynamics ?? segment.volume;
 	if (!annotation) {
@@ -49,7 +49,7 @@ export function getAnnotationText(segment: CondensedSegment, allInstruments: Ins
 	let text = i18n.t(`condensed.${annotation}`);
 	if (segment.annotationInstruments) {
 		const affected = segment.annotationInstruments;
-		const others = allInstruments.filter((instrument) => !affected.includes(instrument));
+		const others = (segment.annotationAllInstruments ?? []).filter((instrument) => !affected.includes(instrument));
 		const names = affected.length > others.length
 			? i18n.t("condensed.all-but", { instruments: getInstrumentsLabel(others) })
 			: getInstrumentsLabel(affected);

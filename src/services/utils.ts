@@ -7,6 +7,9 @@ declare global {
 			parent: HTMLElement;
 			left: number;
 			scrollingDisabled: boolean;
+			/** The scrollLeft that our own smooth scroll is currently animating towards, if any. */
+			scrollTarget?: number;
+			lastScrollLeft: number;
 		}
 	}
 }
@@ -30,10 +33,22 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		element._bbScroll = {
 			parent: curEl,
 			left,
-			scrollingDisabled: false
+			scrollingDisabled: false,
+			lastScrollLeft: curEl.scrollLeft
 		};
 		element._bbScroll.parent.addEventListener("scroll", () => {
-			element._bbScroll!.scrollingDisabled = true;
+			const scroll = element._bbScroll!;
+			const scrollLeft = scroll.parent.scrollLeft;
+			if(scroll.scrollTarget != null && Math.abs(scrollLeft - scroll.scrollTarget) <= 1) {
+				// Our own smooth scroll has arrived at its target
+				scroll.scrollTarget = undefined;
+			} else if(scroll.scrollTarget == null || (scrollLeft - scroll.lastScrollLeft) * (scroll.scrollTarget - scroll.lastScrollLeft) < 0) {
+				// Not our own smooth scroll on its way towards its target, so the user scrolled manually:
+				// suspend the automatic scrolling (it resumes once the element is fully visible again)
+				scroll.scrollTarget = undefined;
+				scroll.scrollingDisabled = true;
+			}
+			scroll.lastScrollLeft = scrollLeft;
 		});
 	}
 
@@ -43,12 +58,18 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 	const fac1 = (scrollFurther ? 0.5 : 0);
 	const fac2 = (scrollFurther ? 0.9 : 0);
 
+	const scrollTo = (target: number) => {
+		const scroll = element._bbScroll!;
+		scroll.scrollTarget = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
+		scroll.parent.scroll({ left: scroll.scrollTarget, behavior: 'smooth' });
+	};
+
 	const left = element.offsetLeft + element._bbScroll.left;
 	if(!element._bbScroll.scrollingDisabled) {
 		if(left + element.offsetWidth > element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth * (1-fac1))
-			element._bbScroll.parent.scroll({ left: left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2), behavior: 'smooth' });
+			scrollTo(left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2));
 		else if(left < element._bbScroll.parent.scrollLeft)
-			element._bbScroll.parent.scroll({ left: left - element._bbScroll.parent.offsetWidth * fac2, behavior: 'smooth' });
+			scrollTo(left - element._bbScroll.parent.offsetWidth * fac2);
 	} else if(left >= element._bbScroll.parent.scrollLeft && left + element.offsetWidth <= element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth)
 		element._bbScroll.scrollingDisabled = false;
 }
