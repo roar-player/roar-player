@@ -60,16 +60,30 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 
 	const scrollTo = (target: number) => {
 		const scroll = element._bbScroll!;
-		scroll.scrollTarget = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
-		scroll.parent.scroll({ left: scroll.scrollTarget, behavior: 'smooth' });
+		const clamped = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
+		if(clamped == scroll.parent.scrollLeft) {
+			// Already there, no scroll event will fire that could clear the target
+			scroll.scrollTarget = undefined;
+		} else if(clamped != scroll.scrollTarget) {
+			scroll.scrollTarget = clamped;
+			scroll.parent.scroll({ left: clamped, behavior: 'smooth' });
+		}
 	};
 
+	// While our own smooth scroll is animating, judge the element position against the target of the animation
+	// rather than the transient scroll position, so that the animation is not needlessly restarted or reverted.
+	const scrollLeft = element._bbScroll.scrollTarget ?? element._bbScroll.parent.scrollLeft;
 	const left = element.offsetLeft + element._bbScroll.left;
 	if(!element._bbScroll.scrollingDisabled) {
-		if(left + element.offsetWidth > element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth * (1-fac1))
-			scrollTo(left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2));
-		else if(left < element._bbScroll.parent.scrollLeft)
-			scrollTo(left - element._bbScroll.parent.offsetWidth * fac2);
+		// The position that leaves the most upcoming content visible (for scrollFurther, the element close to
+		// the left edge; otherwise aligned with the right edge)
+		const target = left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2);
+		if(left + element.offsetWidth > scrollLeft + element._bbScroll.parent.offsetWidth * (1-fac1))
+			scrollTo(target);
+		else if(left < scrollLeft)
+			// When the element jumped backwards, scroll back to the same reading position as when scrolling
+			// forward: anything else would immediately trigger a forward scroll again as the element moves on.
+			scrollTo(scrollFurther ? target : left);
 	} else if(left >= element._bbScroll.parent.scrollLeft && left + element.offsetWidth <= element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth)
 		element._bbScroll.scrollingDisabled = false;
 }

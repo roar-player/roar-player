@@ -534,6 +534,11 @@
 
 		.bb-pattern-player {
 			table-layout: fixed;
+			/* The separate border model (rather than Bootstrap's collapse) makes the cell backgrounds extend */
+			/* under the cell borders, so that the transparent stroke separators stay invisible on the grey */
+			/* background of repeated blocks in the condensed view */
+			border-collapse: separate;
+			border-spacing: 0;
 
 			.stroke {
 				text-align: center;
@@ -566,7 +571,9 @@
 
 			&.listen {
 				.stroke {
-					border-right: 1px solid #ffffff;
+					/* Transparent (rather than white) so that the separators stay invisible on the grey */
+					/* background of repeated blocks in the condensed view */
+					border-right: 1px solid transparent;
 				}
 			}
 
@@ -586,6 +593,11 @@
 				min-width: 2.7ex;
 				min-height: 1em;
 				text-decoration: none;
+				/* Paint above the (position: relative) stroke cells, so that text that is wider than its cell */
+				/* (e.g. at high subdivisions) is not painted over by the backgrounds of the following cells */
+				/* (e.g. in repeated blocks of the condensed view) */
+				position: relative;
+				z-index: 1;
 			}
 
 			thead td {

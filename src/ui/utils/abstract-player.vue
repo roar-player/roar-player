@@ -137,6 +137,8 @@
 		transition: left 0.1s linear;
 		pointer-events: none;
 		display: none;
+		/* Above the raised .stroke-inner texts of the pattern player */
+		z-index: 2;
 
 		&.visible {
 			display: block;
