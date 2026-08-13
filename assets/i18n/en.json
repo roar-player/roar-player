@@ -190,8 +190,7 @@
 		"loud": "loud",
 		"all-but": "All but {{instruments}}",
 		"tempo-step": "{{bpm}} bpm from here",
-		"tempo-step-total": "{{bpm}} bpm from here ({{total}} bpm in total)",
-		"tempo-each": "{{bpm}} bpm at each repetition ({{total}} bpm after the last)"
+		"tempo-each": "{{bpm}} bpm at each repetition"
 	},
 	"sheet": {
 		"speed": "{{bpm}} bpm",

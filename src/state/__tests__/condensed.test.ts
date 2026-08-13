@@ -510,10 +510,10 @@ describe("getCondensedPattern", () => {
 			speedHack: { 5: 10 }
 		}));
 
-		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10, delta: 10 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10 }]);
 	});
 
-	test("reports the step and the total delta of consecutive speed changes", () => {
+	test("reports the step relative to the prevailing speed for consecutive speed changes", () => {
 		const a = "X   X   X   X   ";
 		const b = "X X X X X X X X ";
 		const c = "X  X  X   X X   ";
@@ -524,8 +524,8 @@ describe("getCondensedPattern", () => {
 		}));
 
 		expect(sheet.tempoMarks).toEqual([
-			{ bar: 1, step: 10, delta: 10 },
-			{ bar: 2, step: 20, delta: 30 }
+			{ bar: 1, step: 10 },
+			{ bar: 2, step: 20 }
 		]);
 	});
 
@@ -536,7 +536,7 @@ describe("getCondensedPattern", () => {
 			speedHack: { 1: 0, 5: 10, 7: 10 }
 		}));
 
-		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10, delta: 10 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10 }]);
 	});
 
 	test("condenses a uniform per-iteration speed step with a single mark on the block", () => {
@@ -547,7 +547,7 @@ describe("getCondensedPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 4, tempoStep: 10 }]);
-		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, delta: 30, iterations: 4 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, iterations: 4 }]);
 	});
 
 	test("re-anchors the repetition detection at a speed change", () => {
@@ -560,7 +560,7 @@ describe("getCondensedPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 2, tempoStep: 10 }]);
-		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, delta: 10, iterations: 2 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, iterations: 2 }]);
 	});
 
 	test("does not condense non-uniform speed steps across repetitions", () => {
@@ -576,8 +576,8 @@ describe("getCondensedPattern", () => {
 			{ startBar: 2, bars: 1, repeat: 1 }
 		]);
 		expect(sheet.tempoMarks).toEqual([
-			{ bar: 0, step: 10, delta: 10, iterations: 2 },
-			{ bar: 2, step: 5, delta: 15 }
+			{ bar: 0, step: 10, iterations: 2 },
+			{ bar: 2, step: 5 }
 		]);
 	});
 
@@ -589,7 +589,7 @@ describe("getCondensedPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 1 }]);
-		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10, delta: 10 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10 }]);
 	});
 
 	test("combines a per-iteration speed step with a crescendo annotation", () => {
@@ -601,7 +601,7 @@ describe("getCondensedPattern", () => {
 		}));
 
 		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo", tempoStep: 10 }]);
-		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, delta: 10, iterations: 2 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, iterations: 2 }]);
 	});
 
 	test("renders every speed change as its own mark with condense: false", () => {
@@ -612,9 +612,9 @@ describe("getCondensedPattern", () => {
 		}), { condense: false });
 
 		expect(sheet.tempoMarks).toEqual([
-			{ bar: 1, step: 10, delta: 10 },
-			{ bar: 2, step: 10, delta: 20 },
-			{ bar: 3, step: 10, delta: 30 }
+			{ bar: 1, step: 10 },
+			{ bar: 2, step: 10 },
+			{ bar: 3, step: 10 }
 		]);
 	});
 });

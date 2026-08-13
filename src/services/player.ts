@@ -140,7 +140,14 @@ export function rawPatternPlaybackSettings(getSettings: () => PlaybackSettings):
 	});
 }
 
-export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSettings): RawPatternWithUpbeat {
+/**
+ * Converts a pattern to a raw beatbox pattern.
+ * @param applySpeedHack Whether the tempo changes of the pattern's speed hack are baked into the result.
+ *     songToBeatbox() passes false here: a speed hack affects the whole rest of the song, so it collects the
+ *     tempo changes of all its patterns and applies them once over the assembled song — baking them into the
+ *     individual patterns too would resample their strokes twice and misalign them against the other patterns.
+ */
+export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSettings, applySpeedHack: boolean = true): RawPatternWithUpbeat {
 	const fac = config.playTime/pattern.time;
 	const ret: RawPattern = new Array((pattern.length*pattern.time + pattern.upbeat) * fac);
 
@@ -184,10 +191,10 @@ export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSet
 		ret[i*fac] = stroke;
 	}
 
-	const marks: TempoMark[] = Object.keys(pattern.speedHack ?? {}).map(Number).map((beat) => ({
+	const marks: TempoMark[] = applySpeedHack ? Object.keys(pattern.speedHack ?? {}).map(Number).map((beat) => ({
 		slot: pattern.upbeat * fac + (beat - 1) * config.playTime,
 		factor: getSpeedFactor(pattern.speed, pattern.speedHack![beat])
-	}));
+	})) : [];
 
 	return applyTempoMarks(Object.assign(ret, {
 		upbeat: pattern.upbeat * fac
@@ -206,7 +213,7 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 			volume: playbackSettings.volume,
 			volumes: playbackSettings.volumes,
 			whistle
-		}));
+		}), false);
 
 		let upbeatHasStarted = false;
 		let idxOffset = pattern.upbeat * config.playTime / pattern.time;

@@ -77,12 +77,8 @@ function formatBpmDelta(bpm: number): string {
  */
 export function getTempoMarkTooltip(marks: CondensedTempoMark[]): string {
 	const i18n = getI18n();
-	return marks.map((mark) => {
-		if (mark.iterations != null) {
-			return i18n.t("condensed.tempo-each", { bpm: formatBpmDelta(mark.step), total: formatBpmDelta(mark.delta) });
-		}
-		return mark.delta === mark.step
-			? i18n.t("condensed.tempo-step", { bpm: formatBpmDelta(mark.step) })
-			: i18n.t("condensed.tempo-step-total", { bpm: formatBpmDelta(mark.step), total: formatBpmDelta(mark.delta) });
-	}).join("\n");
+	return marks.map((mark) => i18n.t(
+		mark.iterations != null ? "condensed.tempo-each" : "condensed.tempo-step",
+		{ bpm: formatBpmDelta(mark.step) }
+	)).join("\n");
 }

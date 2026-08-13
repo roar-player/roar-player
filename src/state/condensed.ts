@@ -93,11 +93,6 @@ export type CondensedTempoMark = {
 	 */
 	step: number;
 	/**
-	 * The resulting bpm delta relative to the pattern's base speed (for per-iteration marks, after the last
-	 * iteration), shown in the tooltip of the mark.
-	 */
-	delta: number;
-	/**
 	 * Set if the mark sits at the start of a repeated segment whose speed steps up/down by `step` at each
 	 * iteration (accelerando over the repetitions): the repeat count of the segment.
 	 */
@@ -721,20 +716,14 @@ export function getCondensedPattern(pattern: Pattern, options?: { condense?: boo
 			segment.tempoStep != null && change.bar > segment.startBar && change.bar < segment.startBar + segment.bars * segment.repeat);
 		if (block) {
 			if (!tempoMarks.some((mark) => mark.bar === block.startBar && mark.iterations != null)) {
-				tempoMarks.push({
-					bar: block.startBar,
-					step: block.tempoStep!,
-					delta: (prevailing + (block.repeat - 1) * block.tempoStep!),
-					iterations: block.repeat
-				});
+				tempoMarks.push({ bar: block.startBar, step: block.tempoStep!, iterations: block.repeat });
 			}
 		} else {
 			const last = tempoMarks[tempoMarks.length - 1];
 			if (last && last.iterations == null && last.bar === change.bar) {
 				last.step += change.delta - prevailing;
-				last.delta = change.delta;
 			} else {
-				tempoMarks.push({ bar: change.bar, step: change.delta - prevailing, delta: change.delta });
+				tempoMarks.push({ bar: change.bar, step: change.delta - prevailing });
 			}
 		}
 		prevailing = change.delta;
