@@ -16,7 +16,13 @@ declare global {
 	}
 }
 
-export function scrollToElement(element: HTMLElement, scrollFurther: boolean = false, force: boolean = false): void {
+/**
+ * Scrolls the nearest scrollable ancestor so that the element is visible, unless the user has scrolled manually
+ * (until the element is fully visible again). With scrollFurther, the view is advanced so that most of the
+ * upcoming content is visible (used to follow the position marker during playback). leftInParent overrides the
+ * element's horizontal position, for elements that are positioned through a transform (which offsetLeft ignores).
+ */
+export function scrollToElement(element: HTMLElement, scrollFurther: boolean = false, force: boolean = false, leftInParent?: number): void {
 	if(!element._bbScroll) {
 		let left = 0;
 		let curEl: HTMLElement | null = element.offsetParent as HTMLElement;
@@ -67,7 +73,7 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 	const fac1 = (scrollFurther ? 0.1 : 0);
 	const fac2 = (scrollFurther ? 0.9 : 0);
 
-	const scrollTo = (target: number, smooth: boolean) => {
+	const scrollTo = (target: number, behavior: "smooth" | "glide") => {
 		const scroll = element._bbScroll!;
 		const clamped = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
 		if(clamped == scroll.parent.scrollLeft) {
@@ -76,26 +82,43 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		} else if(clamped != scroll.scrollTarget) {
 			scroll.scrollTarget = clamped;
 			scroll.scrollTargetTime = Date.now();
-			scroll.parent.scroll({ left: clamped, behavior: smooth ? 'smooth' : 'auto' });
+			if(behavior == "glide") {
+				// A quick ease-out glide, rather than the browser's smooth scrolling (which takes its time and
+				// would leave the element out of sight for most of the animation): the view leaves quickly and
+				// decelerates into the target, so the eye can follow where it lands.
+				const from = scroll.parent.scrollLeft;
+				const duration = Math.min(400, 150 + Math.abs(clamped - from) / 4);
+				const start = performance.now();
+				const step = (now: number) => {
+					if(scroll.scrollTarget != clamped)
+						return; // Superseded by another scroll or aborted by a user scroll
+					const t = Math.min(1, (now - start) / duration);
+					scroll.parent.scrollLeft = from + (clamped - from) * (1 - (1 - t) ** 3);
+					if(t < 1)
+						requestAnimationFrame(step);
+				};
+				requestAnimationFrame(step);
+			} else {
+				scroll.parent.scroll({ left: clamped, behavior: 'smooth' });
+			}
 		}
 	};
 
 	// While our own smooth scroll is animating, judge the element position against the target of the animation
 	// rather than the transient scroll position, so that the animation is not needlessly restarted or reverted.
 	const scrollLeft = element._bbScroll.scrollTarget ?? element._bbScroll.parent.scrollLeft;
-	const left = element.offsetLeft + element._bbScroll.left;
+	const left = (leftInParent ?? element.offsetLeft) + element._bbScroll.left;
 	if(!element._bbScroll.scrollingDisabled) {
 		// The position that leaves the most upcoming content visible (for scrollFurther, the element close to
 		// the left edge; otherwise aligned with the right edge)
 		const target = left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2);
 		if(left + element.offsetWidth > scrollLeft + element._bbScroll.parent.offsetWidth * (1-fac1))
-			scrollTo(target, true);
+			scrollTo(target, "smooth");
 		else if(left < scrollLeft)
-			// When the element jumped backwards during playback (scrollFurther), snap back instantly to the
-			// same reading position as when scrolling forward: a smooth animation would leave the element out
-			// of sight while it is running, and any other position would immediately trigger a forward scroll
+			// When the element jumped backwards during playback (scrollFurther), glide back to the same reading
+			// position as when scrolling forward: any other position would immediately trigger a forward scroll
 			// again as the element moves on.
-			scrollTo(scrollFurther ? target : left, !scrollFurther);
+			scrollTo(scrollFurther ? target : left, scrollFurther ? "glide" : "smooth");
 	} else if(left >= element._bbScroll.parent.scrollLeft && left + element.offsetWidth <= element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth)
 		element._bbScroll.scrollingDisabled = false;
 }

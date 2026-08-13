@@ -28,6 +28,9 @@
 	const playerRef = ref<BeatboxReference>();
 	const playerInst = computed(() => playerRef.value && getPlayerById(playerRef.value.id));
 
+	/** The position that the marker was last moved to, to detect backward jumps without a DOM read. */
+	let markerLeft = 0;
+
 	const updatePosition = (scroll: boolean, force = false) => {
 		const player = getOrCreatePlayer();
 		const rawPosition = player.getPosition();
@@ -37,18 +40,20 @@
 		if (position != null && beat != null) {
 			const marker = positionMarkerRef.value!;
 			const newLeft = props.getLeft({ position, beat, player });
-			if (newLeft < parseFloat(marker.style.left || "0")) {
+			if (newLeft < markerLeft) {
 				// Jump backwards (e.g. a repeated block starting over) instantly — animating it would show
 				// the marker streaking leftwards across the pattern
 				marker.style.transition = "none";
-				marker.style.left = `${newLeft}px`;
-				void marker.offsetLeft; // Flush, so that the transition is not applied to this change
+				marker.style.transform = `translateX(${newLeft}px)`;
+				void marker.offsetWidth; // Flush, so that the transition is not applied to this change
 				marker.style.transition = "";
 			} else {
-				marker.style.left = `${newLeft}px`;
+				marker.style.transform = `translateX(${newLeft}px)`;
 			}
+			markerLeft = newLeft;
 			if (scroll) {
-				scrollToElement(marker, true, force);
+				// The marker is positioned through a transform, so its position needs to be passed explicitly
+				scrollToElement(marker, true, force, newLeft);
 			}
 		}
 	};
@@ -143,9 +148,14 @@
 	.bb-position-marker {
 		position: absolute;
 		top: 0;
+		left: 0;
 		height: 100%;
 		border-left: 1px solid #000;
-		transition: left 0.1s linear;
+		/* The marker moves via transform (rather than left) on its own compositor layer (will-change), so that */
+		/* the per-frame updates during playback neither invalidate the layout (the scroll position reads right */
+		/* after would force a synchronous reflow of the whole pattern table) nor repaint the table behind it */
+		transition: transform 0.1s linear;
+		will-change: transform;
 		pointer-events: none;
 		display: none;
 		/* Above the raised .stroke-inner texts of the pattern player */

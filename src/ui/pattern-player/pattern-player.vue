@@ -219,27 +219,47 @@
 
 	const rawPattern = computed(() => patternToBeatbox(pattern.value, playbackSettings.value));
 
+	/** The index of the beat cell currently highlighted as active, so that the highlight (and the DOM queries
+	 * involved) is only touched when the beat changes, not on every frame of the playback position updates. */
+	let activeBeatIdx: number | undefined;
+
 	const handlePosition = ({ beat }: PositionData) => {
 		const location = beat != null ? getBeatLocation(beat) : undefined;
-		playbackIteration.value = location?.segmentIdx != null ? { segmentIdx: location.segmentIdx, iteration: location.iteration! } : undefined;
-		if(location == null) {
-			containerRef.value!.querySelector(".beat.active")?.classList.remove("active");
-		} else {
-			const activeBeat = containerRef.value!.querySelector(".beat.active");
-			const beatEl = containerRef.value!.querySelector(`.beat-i-${Math.floor(location.beat)}`);
-			if (activeBeat && activeBeat !== beatEl) {
-				activeBeat.classList.remove("active");
-			}
-			if (beatEl && beatEl !== activeBeat) {
-				beatEl.classList.add("active");
-			}
+		const iteration = location?.segmentIdx != null ? { segmentIdx: location.segmentIdx, iteration: location.iteration! } : undefined;
+		if (!isEqual(iteration, playbackIteration.value)) {
+			// Only touch the ref when the values change: a new object on every frame would re-render the
+			// indicator row at frame rate
+			playbackIteration.value = iteration;
+		}
+		const beatIdx = location != null ? Math.floor(location.beat) : undefined;
+		if (beatIdx === activeBeatIdx) {
+			return;
+		}
+		activeBeatIdx = beatIdx;
+		const activeBeat = containerRef.value!.querySelector(".beat.active");
+		const beatEl = beatIdx != null ? containerRef.value!.querySelector(`.beat-i-${beatIdx}`) : null;
+		if (activeBeat && activeBeat !== beatEl) {
+			activeBeat.classList.remove("active");
+		}
+		if (beatEl && beatEl !== activeBeat) {
+			beatEl.classList.add("active");
 		}
 	};
+
+	/** Cache of the rendered stroke cells by stroke index, so that following the playback position does not
+	 * run a DOM query on every frame. Entries are validated before use, so re-renders need no invalidation. */
+	const strokeElCache = new Map<number, HTMLElement>();
 
 	const getPositionMarkerLeft = ({ beat }: PositionData<false>) => {
 		const stroke = getBeatLocation(beat).beat * pattern.value.time;
 		const strokeIdx = Math.floor(stroke);
-		const strokeEl = containerRef.value!.querySelector<HTMLElement>(".stroke-i-"+strokeIdx);
+		let strokeEl = strokeElCache.get(strokeIdx);
+		if (!strokeEl?.isConnected || !strokeEl.classList.contains(`stroke-i-${strokeIdx}`)) {
+			strokeEl = containerRef.value!.querySelector<HTMLElement>(".stroke-i-"+strokeIdx) ?? undefined;
+			if (strokeEl) {
+				strokeElCache.set(strokeIdx, strokeEl);
+			}
+		}
 		return strokeEl ? (strokeEl.offsetLeft + strokeEl.offsetWidth * (stroke - strokeIdx)) : 0;
 	};
 
