@@ -39,11 +39,14 @@ export const instrumentVolumeHackValidator = transformValidator(strictInstrument
 /**
  * A (hacky) way to specify tempo changes at certain beats of a pattern.
  * A record where the key is the 1-based beat number (as shown in the condensed pattern representation, like
- * openRepeats) and the value is the speed delta in bpm relative to the pattern's base speed (`speed`), so the
- * values scale along when the playback speed is changed. Values are not cumulative: each one states the total
- * delta that applies from its beat on. A value stays in effect until the next speed hack point — also across
- * the following patterns when played as part of a song. Beats should be bar starts (beat 1, 5, 9, …), as the
- * tune sheets and the pattern player annotate the changes at bar lines.
+ * openRepeats) and the value is the speed delta in bpm relative to the tempo at which the pattern is entered:
+ * its base speed (`speed`) when the pattern is played alone, or the prevailing tempo when it is part of a song
+ * whose earlier patterns have already changed the speed — so speed changes accumulate across the patterns of a
+ * song, and everything scales along when the playback speed is changed. Within a pattern, values are not
+ * cumulative: each one states the total delta (since the pattern's entry) that applies from its beat on. A
+ * value stays in effect until the next speed hack point — also across the following patterns of a song. Beats
+ * should be bar starts (beat 1, 5, 9, …), as the tune sheets and the pattern player annotate the changes at
+ * bar lines.
  */
 export type SpeedHack = z.infer<typeof speedHackValidator>;
 export const speedHackValidator = numberRecordValidator(z.number());

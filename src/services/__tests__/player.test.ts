@@ -60,4 +60,21 @@ describe("songToBeatbox", () => {
 		// and keeps playing at the changed tempo
 		expect(getStrokeSlots(raw)).toEqual(Array.from({ length: 14 + 4 }, (_, beat) => beat * 2 * config.playTime));
 	});
+
+	test("applies speed hacks relative to the tempo at which their pattern is entered", () => {
+		// Regression test: the factors used to be computed against each pattern's base speed, so a pattern
+		// speeding up by 10 bpm after an earlier +30 bpm dropped the tempo back to base+10 instead of
+		// accumulating to base+40.
+		const first = normalizePattern({ length: 4, speed: 100, speedHack: { 1: 30 }, ls: strokesOnBeats(4) });
+		const second = normalizePattern({ length: 4, speed: 100, speedHack: { 1: 10 }, ls: strokesOnBeats(4) });
+		const chainState = { tunes: { T: { patterns: { First: first, Second: second } } } } as unknown as State;
+		const song = { 0: { ls: ["T", "First"] }, 4: { ls: ["T", "Second"] } } as SongParts;
+
+		const raw = songToBeatbox(song, chainState, normalizePlaybackSettings({}));
+
+		const factors = raw.tempoMap!.map((segment) => segment.factor);
+		expect(factors).toHaveLength(2);
+		expect(factors[0]).toBeCloseTo(1.3, 10);
+		expect(factors[1]).toBeCloseTo(1.4, 10);
+	});
 });

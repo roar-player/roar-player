@@ -237,8 +237,17 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 	// simultaneous patterns define a speed hack for the same beat, the first instrument (in the order of
 	// config.instrumentKeys) wins. The slots are relative to song beat 0 (the song upbeat is added below, once
 	// it is known).
-	const tempoMarks: TempoMark[] = [];
-	const tempoMarkSlots = new Set<number>();
+	type SpeedHackPoint = {
+		slot: number;
+		/** The slot at which the pattern that defines this point starts. */
+		entry: number;
+		/** The bpm delta of the speed hack point, relative to the tempo at the pattern's entry. */
+		value: number;
+		/** The base speed of the pattern, defining the bpm scale of the value. */
+		speed: number;
+	};
+	const speedHackPoints: SpeedHackPoint[] = [];
+	const speedHackSlots = new Set<number>();
 	for(let i=0; i<length; i++) {
 		for(const inst of config.instrumentKeys) {
 			const patternReference = song[i] && song[i][inst];
@@ -255,12 +264,33 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 					continue; // The speed hack point lies within the cut-off part of the pattern
 
 				const slot = (i + beat - 1) * config.playTime;
-				if(!tempoMarkSlots.has(slot)) {
-					tempoMarkSlots.add(slot);
-					tempoMarks.push({ slot, factor: getSpeedFactor(pattern.speed, pattern.speedHack[beat]) });
+				if(!speedHackSlots.has(slot)) {
+					speedHackSlots.add(slot);
+					speedHackPoints.push({ slot, entry: i * config.playTime, value: pattern.speedHack[beat], speed: pattern.speed });
 				}
 			}
 		}
+	}
+
+	// A speed hack value is relative to the tempo at which its pattern was entered, so that speed changes
+	// accumulate across the patterns of a song (a pattern that speeds up by 10 bpm does so from the prevailing
+	// tempo, not from the base speed). The points are processed in slot order, so the factor prevailing at a
+	// pattern's entry is known by the time its first point is reached (a pattern's points never lie before its
+	// entry).
+	speedHackPoints.sort((a, b) => a.slot - b.slot);
+	const tempoMarks: TempoMark[] = [];
+	const entryFactors = new Map<number, number>();
+	for(const point of speedHackPoints) {
+		let entryFactor = entryFactors.get(point.entry);
+		if(entryFactor == null) {
+			entryFactor = 1;
+			for(const mark of tempoMarks) {
+				if(mark.slot < point.entry)
+					entryFactor = mark.factor;
+			}
+			entryFactors.set(point.entry, entryFactor);
+		}
+		tempoMarks.push({ slot: point.slot, factor: Math.max(0.1, entryFactor + point.value / point.speed) });
 	}
 
 	for(let i=0; i<length; i++) {
