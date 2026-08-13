@@ -101,7 +101,8 @@
 		<div class="row">
 			<label :for="`${id}-speed`" class="col-sm-4 col-form-label">{{i18n.t("playback-settings-picker.speed")}}</label>
 			<div class="col-sm-8 d-flex align-items-center">
-				<input :id="`${id}-speed`" type="range" class="form-range" v-model.number="speed" min="30" max="180" v-tooltip="`${speed}`"/>
+				<input :id="`${id}-speed`" type="range" class="form-range" v-model.number="speed" min="30" max="180"/>
+				<span class="speed-value">{{speed}}</span>
 				<button type="button" class="btn btn-secondary btn-sm ms-2" @click="speed = defaultSpeed">{{i18n.t("playback-settings-picker.speed-reset")}}</button>
 			</div>
 		</div>
@@ -169,6 +170,13 @@
 	.bb-playback-settings {
 		&.popover {
 			max-width: none;
+		}
+
+		.speed-value {
+			margin-left: 0.75ex;
+			// Wide enough for 3 digits, so that the layout does not shift while sliding
+			min-width: 3ch;
+			text-align: end;
 		}
 
 		.instrument-names td {

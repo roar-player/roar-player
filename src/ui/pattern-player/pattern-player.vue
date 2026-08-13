@@ -316,7 +316,8 @@
 			positiveI += 4;
 
 		const ret = [ "beat-"+(positiveI%4), "beat-i-"+i ];
-		if(positiveI%4 == 3)
+		// The last beat of the pattern ends with a bar line even if the last bar has less than 4 beats
+		if(positiveI%4 == 3 || i == pattern.value.length - 1)
 			ret.push("before-bar");
 		if(positiveI%4 == 0)
 			ret.push("after-bar");
@@ -336,7 +337,8 @@
 			ret.push("before-beat");
 		if(i%pattern.value.time == 0)
 			ret.push("after-beat");
-		if((i+1)%(pattern.value.time*4) == 0)
+		// The last stroke of the pattern ends with a bar line even if the last bar has less than 4 beats
+		if((i+1)%(pattern.value.time*4) == 0 || i == pattern.value.length * pattern.value.time - 1)
 			ret.push("before-bar");
 		if(i%(pattern.value.time*4) == 0)
 			ret.push("after-bar");

@@ -84,15 +84,23 @@
 		p.setPosition(0);
 	};
 
+	// The width of the song strip itself, i.e. without the trailing spacer that allows scrolling the end of the
+	// song out from underneath the floating action buttons
+	const getSongWidth = () => {
+		const cards = songRef.value!.querySelectorAll<HTMLElement>(":scope > .card");
+		const last = cards[cards.length - 1];
+		return last ? last.offsetLeft + last.offsetWidth : songRef.value!.scrollWidth;
+	};
+
 	const setPosition = ($event: MouseEvent) => {
 		const length = getEffectiveSongLength(songParts.value, state.value);
 		const el = songRef.value!;
 		const rect = el.getBoundingClientRect();
-		const percent = (el.scrollLeft + $event.clientX - rect.left) / el.scrollWidth;
+		const percent = Math.max(0, Math.min(1, (el.scrollLeft + $event.clientX - rect.left) / getSongWidth()));
 		abstractPlayerRef.value!.setBeat(percent * length);
 	};
 
-	const getPositionMarkerLeft = ({ position, player }: PositionData<false>) => (position / player._pattern.length) * songRef.value!.scrollWidth;
+	const getPositionMarkerLeft = ({ position, player }: PositionData<false>) => (position / player._pattern.length) * getSongWidth();
 
 	const handleDownload = () => {
 		void download({
@@ -153,6 +161,13 @@
 				.tune-name {
 					font-weight: bold;
 				}
+			}
+
+			// Trailing space, so that the end of the song can be scrolled out from underneath the floating
+			// action buttons
+			&::after {
+				content: "";
+				flex: 0 0 10em;
 			}
 		}
 
