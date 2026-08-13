@@ -11,7 +11,8 @@
  * and PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium when running this script.
  *
  * The booklet cover and the page footers can be customized through environment variables:
- * - SHEETS_TITLE: the title on the cover page (default: the app name, i.e. the HTML title of the build)
+ * - SHEETS_TITLE: the title on the cover page and in the page footers (default: the app name, i.e. the HTML
+ *   title of the build)
  * - SHEETS_SUBTITLE: the subtitle on the cover page (default: "Tune sheets")
  * - SHEETS_SOURCE: where the sheets were generated from, e.g. a player URL (shown on the cover page)
  * - SHEETS_LOGO: path to a PNG/JPEG logo shown on the cover page
@@ -168,9 +169,9 @@ const PAGE_HEIGHT = 841.89;
 const PAGE_MARGIN = 42.52; // 15mm
 const TOC_ENTRIES_PER_PAGE = 40;
 
-/** Draws the page number and the version at the bottom of the page. */
-function drawFooter(page, font, pageNumber) {
-	const label = `Page ${pageNumber} · Version ${version}`;
+/** Draws the sheet title, the page number and the version at the bottom of the page. */
+function drawFooter(page, font, title, pageNumber) {
+	const label = encodableText(font, `${title} · Page ${pageNumber} · Version ${version}`);
 	page.drawText(label, {
 		x: (page.getWidth() - font.widthOfTextAtSize(label, 9)) / 2,
 		y: 17,
@@ -180,12 +181,12 @@ function drawFooter(page, font, pageNumber) {
 	});
 }
 
-/** Adds a page number/version footer to each page of a single-tune PDF. */
-async function stampFooters(pdfBytes) {
+/** Adds a title/page number/version footer to each page of a single-tune PDF. */
+async function stampFooters(pdfBytes, title) {
 	const doc = await PDFDocument.load(pdfBytes);
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	doc.getPages().forEach((page, i) => {
-		drawFooter(page, font, i + 1);
+		drawFooter(page, font, title, i + 1);
 	});
 	return await doc.save();
 }
@@ -225,7 +226,8 @@ async function generateBooklet(appName, tunes, rawPdfs) {
 			height: logoHeight
 		});
 	}
-	const coverTitle = encodableText(fontBold, titleOverride ?? appName);
+	const title = titleOverride ?? appName;
+	const coverTitle = encodableText(fontBold, title);
 	cover.drawText(coverTitle, {
 		x: (PAGE_WIDTH - fontBold.widthOfTextAtSize(coverTitle, 32)) / 2,
 		y: PAGE_HEIGHT / 2 + 60,
@@ -278,10 +280,10 @@ async function generateBooklet(appName, tunes, rawPdfs) {
 		}
 	}
 
-	// Page number/version footers (all pages except the cover)
+	// Title/page number/version footers (all pages except the cover)
 	const pages = booklet.getPages();
 	for (let i = 1; i < pages.length; i++) {
-		drawFooter(pages[i], font, i + 1);
+		drawFooter(pages[i], font, title, i + 1);
 	}
 
 	addOutline(booklet, entries.map((entry) => ({ title: entry.displayName, pageIndex: entry.startPage - 1 })));
@@ -331,7 +333,7 @@ async function main() {
 		console.log("Generating booklet.pdf...");
 		await generateBooklet(appName, tunes, rawPdfs);
 		for (const tune of tunes) {
-			await writeFile(path.join(outDir, `${tune.slug}.pdf`), await stampFooters(rawPdfs.get(tune.slug)));
+			await writeFile(path.join(outDir, `${tune.slug}.pdf`), await stampFooters(rawPdfs.get(tune.slug), titleOverride ?? appName));
 		}
 
 		console.log(`Generated ${tunes.length} tune sheets and the booklet in ${outDir}.`);
