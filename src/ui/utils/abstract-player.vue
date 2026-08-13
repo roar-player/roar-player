@@ -2,7 +2,7 @@
 	import Beatbox from 'beatbox.js';
 	import { computed, onBeforeUnmount, ref, watch, watchSyncEffect } from 'vue';
 	import config from '../../config';
-	import { BeatboxReference, createBeatbox, getPlayerById, RawPatternWithUpbeat } from '../../services/player';
+	import { BeatboxReference, beatToRawPosition, createBeatbox, getPlayerById, rawPositionToBeat, RawPatternWithUpbeat } from '../../services/player';
 	import { followPlayback, type FollowPlaybackContext } from '../../services/utils';
 	import { PlaybackSettings } from '../../state/playbackSettings';
 
@@ -38,7 +38,7 @@
 		const player = getOrCreatePlayer();
 		const rawPosition = player.getPosition();
 		const position = player.playing || rawPosition > 0 ? Math.min(rawPosition, player._pattern.length) : undefined;
-		const beat = position != null ? (position - player._upbeat)/config.playTime : undefined;
+		const beat = position != null ? rawPositionToBeat(position, props.rawPattern) : undefined;
 		emit("position", { position, beat, player });
 		if (position != null && beat != null) {
 			const marker = positionMarkerRef.value!;
@@ -130,8 +130,7 @@
 	};
 
 	const setBeat = (beat: number) => {
-		const player = getOrCreatePlayer();
-		setPosition(Math.floor(beat * config.playTime + player._upbeat));
+		setPosition(Math.floor(beatToRawPosition(beat, props.rawPattern)));
 	};
 
 	defineExpose({

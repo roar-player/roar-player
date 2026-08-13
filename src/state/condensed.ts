@@ -11,6 +11,10 @@ import { InstrumentVolumeHack, Pattern } from "./pattern";
  * - Bars that are repeated are rendered only once with a repeat count (“×4”).
  * - Volume changes (specified through the volume hack) are preserved as textual annotations above the bars
  *   where they happen: ramps as “soft to loud”/“loud to soft”, constant sections as “soft”/“loud”.
+ * - Tempo changes (specified through the speed hack) become marks (“♩+”/“♩−”) at the bar lines where they
+ *   happen. A repetition never extends across a tempo change — except when the speed steps up/down uniformly
+ *   once per iteration, which stays condensed and is annotated on the block as a whole (accelerando over the
+ *   repetitions).
  */
 
 /** How a condensed row (a group of instruments playing the same line) should be labelled. */
@@ -68,6 +72,36 @@ export type CondensedSegment = {
 	 * which renders that bar as an open-ended repeat block.
 	 */
 	open?: boolean;
+	/**
+	 * Set if the speed steps up/down uniformly at the start of each iteration of the repeated segment (through
+	 * the speed hack): the bpm delta of a single step. The corresponding tempo mark is emitted at the start of
+	 * the segment (see CondensedTempoMark.iterations).
+	 */
+	tempoStep?: number;
+};
+
+/**
+ * A tempo change (through the speed hack) as rendered in the condensed representation: a “♩+”/“♩−” mark at the
+ * bar line of a bar.
+ */
+export type CondensedTempoMark = {
+	/** The bar (bar 0 is the first bar after the upbeat) at whose bar line the mark is rendered. */
+	bar: number;
+	/**
+	 * The bpm change happening at this mark, relative to the previously prevailing speed. The sign determines
+	 * the direction of the mark (♩+ or ♩−). For per-iteration marks, the change of a single step.
+	 */
+	step: number;
+	/**
+	 * The resulting bpm delta relative to the pattern's base speed (for per-iteration marks, after the last
+	 * iteration), shown in the tooltip of the mark.
+	 */
+	delta: number;
+	/**
+	 * Set if the mark sits at the start of a repeated segment whose speed steps up/down by `step` at each
+	 * iteration (accelerando over the repetitions): the repeat count of the segment.
+	 */
+	iterations?: number;
 };
 
 export type CondensedPattern = {
@@ -79,6 +113,8 @@ export type CondensedPattern = {
 	totalBars: number;
 	rows: CondensedRow[];
 	segments: CondensedSegment[];
+	/** The tempo changes of the pattern, ordered by bar. Every mark refers to a rendered bar. */
+	tempoMarks: CondensedTempoMark[];
 };
 
 const BEATS_PER_BAR = 4;
@@ -214,10 +250,11 @@ function labelRows(rows: RawRow[]): CondensedRow[] {
  * repetitions of units of any number of bars (a single repeated bar, a repeated 2/3/4-bar phrase, …) anywhere
  * in the pattern.
  * @param barsEqual Returns whether two bars (given as bar indexes) have identical strokes (ignoring volumes).
- * @param getRepeatDynamics Validates the volumes of a candidate repetition (`repeat` repetitions of a
- *     `bars`-bar unit starting at `startBar`): returns undefined if the volumes are identical in each
- *     repetition, "crescendo"/"decrescendo" if they form a monotonic ramp across the repetitions, and false
- *     if they are incompatible (in which case a shorter repetition is tried).
+ * @param validateRepeat Validates the volumes and tempo changes of a candidate repetition (`repeat`
+ *     repetitions of a `bars`-bar unit starting at `startBar`): returns the annotations that the repeated
+ *     segment should carry (dynamics for a volume ramp across the repetitions, tempoStep for a uniform speed
+ *     step at each iteration; both empty if the repetitions are truly identical), or false if the volumes or
+ *     tempo changes are incompatible with the repetition (in which case a shorter repetition is tried).
  * @param boundaries Bars that repetitions must not extend across (but may start or end at): the bars whose
  *     repetition is forced open through openRepeats. This re-anchors the greedy detection at those bars,
  *     which could otherwise detect a different phase of the same repetition starting earlier in the pattern.
@@ -226,7 +263,7 @@ function labelRows(rows: RawRow[]): CondensedRow[] {
 function findSegments(
 	totalBars: number,
 	barsEqual: (a: number, b: number) => boolean,
-	getRepeatDynamics: (startBar: number, bars: number, repeat: number) => CondensedSegment["dynamics"] | false,
+	validateRepeat: (startBar: number, bars: number, repeat: number) => Pick<CondensedSegment, "dynamics" | "tempoStep"> | false,
 	boundaries: number[]
 ): CondensedSegment[] | undefined {
 	if (totalBars < 2) {
@@ -254,12 +291,12 @@ function findSegments(
 			while (bar + (maxRepeat + 1) * unit <= limit && rangeEqual(bar, bar + maxRepeat * unit, unit)) {
 				maxRepeat++;
 			}
-			// Among the stroke-identical repetitions, use the longest prefix with compatible volumes
+			// Among the stroke-identical repetitions, use the longest prefix with compatible volumes and tempo changes
 			for (let repeat = maxRepeat; repeat >= 2; repeat--) {
-				const dynamics = getRepeatDynamics(bar, unit, repeat);
-				if (dynamics !== false) {
+				const annotations = validateRepeat(bar, unit, repeat);
+				if (annotations !== false) {
 					if (!best || (repeat - 1) * unit > (best.repeat - 1) * best.bars) {
-						best = { startBar: bar, bars: unit, repeat, ...(dynamics ? { dynamics } : {}) };
+						best = { startBar: bar, bars: unit, repeat, ...annotations };
 					}
 					break;
 				}
@@ -538,6 +575,18 @@ export function getCondensedPattern(pattern: Pattern, options?: { condense?: boo
 		.map((beat) => (beat - 1) / BEATS_PER_BAR)
 		.filter((bar) => Number.isInteger(bar) && bar >= 0 && bar < totalBars);
 
+	// The tempo changes of the pattern (through the speed hack, which lists 1-based beat numbers), mapped to
+	// the bars at whose bar line they are annotated. Points that do not change the prevailing speed are
+	// dropped, so that they neither produce a mark nor prevent bars from being condensed.
+	const speedChanges: Array<{ bar: number; delta: number; aligned: boolean }> = [];
+	for (const beat of Object.keys(pattern.speedHack ?? {}).map(Number).sort((a, b) => a - b)) {
+		const bar = Math.floor((beat - 1) / BEATS_PER_BAR);
+		const prevailing = speedChanges.length ? speedChanges[speedChanges.length - 1].delta : 0;
+		if (bar >= 0 && bar < totalBars && pattern.speedHack![beat] !== prevailing) {
+			speedChanges.push({ bar, delta: pattern.speedHack![beat], aligned: (beat - 1) % BEATS_PER_BAR === 0 });
+		}
+	}
+
 	let segments: CondensedSegment[] | undefined;
 
 	if (condense && bodyBars >= 2) {
@@ -594,7 +643,41 @@ export function getCondensedPattern(pattern: Pattern, options?: { condense?: boo
 			return false;
 		};
 
-		segments = findSegments(bodyBars, strokesEqual, getRepeatDynamics, openBars);
+		// Validates the tempo changes of a candidate repetition: a repetition must not contain any speed change —
+		// except when the speed steps up/down uniformly at the start of each iteration after the first
+		// (accelerando over the repetitions), which is annotated on the block as a whole. Returns the step of
+		// such a per-iteration change, undefined if the candidate contains no speed change, and false if the
+		// changes are incompatible with the repetition.
+		const getRepeatTempoStep = (startBar: number, bars: number, repeat: number): number | undefined | false => {
+			const inside = speedChanges.filter((change) => change.bar > startBar && change.bar < startBar + bars * repeat);
+			if (inside.length === 0) {
+				return undefined;
+			}
+			if (inside.length !== repeat - 1 || inside.some((change, k) => change.bar !== startBar + (k + 1) * bars || !change.aligned)) {
+				return false;
+			}
+			const before = speedChanges.filter((change) => change.bar <= startBar);
+			const base = before.length ? before[before.length - 1].delta : 0;
+			const step = inside[0].delta - base;
+			if (inside.some((change, k) => change.delta !== base + (k + 1) * step)) {
+				return false;
+			}
+			return step;
+		};
+
+		const validateRepeat = (startBar: number, bars: number, repeat: number): Pick<CondensedSegment, "dynamics" | "tempoStep"> | false => {
+			const tempoStep = getRepeatTempoStep(startBar, bars, repeat);
+			if (tempoStep === false) {
+				return false;
+			}
+			const dynamics = getRepeatDynamics(startBar, bars, repeat);
+			if (dynamics === false) {
+				return false;
+			}
+			return { ...(dynamics ? { dynamics } : {}), ...(tempoStep != null ? { tempoStep } : {}) };
+		};
+
+		segments = findSegments(bodyBars, strokesEqual, validateRepeat, openBars);
 	}
 
 	segments ??= [{ startBar: 0, bars: totalBars, repeat: 1 }];
@@ -627,11 +710,42 @@ export function getCondensedPattern(pattern: Pattern, options?: { condense?: boo
 
 	segments = applyVolumeAnnotations(segments, getVolumeSpans(rawRows, pattern.upbeat, barStrokes, totalBars), rawRows, pattern.upbeat, barStrokes);
 
+	// Turn the speed changes into tempo marks at rendered bar lines. Changes that were validated as a
+	// per-iteration step of a repeated segment are represented by a single mark at the start of the block
+	// (the repetition detection guarantees that every other change lies on a rendered bar). Several changes
+	// within the same bar (possible for speed hack points that are not at bar starts) merge into one mark.
+	const tempoMarks: CondensedTempoMark[] = [];
+	let prevailing = 0;
+	for (const change of speedChanges) {
+		const block = segments.find((segment) =>
+			segment.tempoStep != null && change.bar > segment.startBar && change.bar < segment.startBar + segment.bars * segment.repeat);
+		if (block) {
+			if (!tempoMarks.some((mark) => mark.bar === block.startBar && mark.iterations != null)) {
+				tempoMarks.push({
+					bar: block.startBar,
+					step: block.tempoStep!,
+					delta: (prevailing + (block.repeat - 1) * block.tempoStep!),
+					iterations: block.repeat
+				});
+			}
+		} else {
+			const last = tempoMarks[tempoMarks.length - 1];
+			if (last && last.iterations == null && last.bar === change.bar) {
+				last.step += change.delta - prevailing;
+				last.delta = change.delta;
+			} else {
+				tempoMarks.push({ bar: change.bar, step: change.delta - prevailing, delta: change.delta });
+			}
+		}
+		prevailing = change.delta;
+	}
+
 	return {
 		time: pattern.time,
 		upbeat: pattern.upbeat,
 		totalBars,
 		rows: labelRows(rawRows),
-		segments
+		segments,
+		tempoMarks
 	};
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { normalizePattern, setSegmentRepeatCount, updateStrokeMirrored } from "../pattern";
+import { CompressedPattern, normalizePattern, patternEquals, patternFromCompressed, setSegmentRepeatCount, updateStrokeMirrored } from "../pattern";
 
 test('normalizePattern', () => {
 	expect(normalizePattern()).toEqual({
@@ -65,14 +65,16 @@ test('setSegmentRepeatCount', () => {
 		length: 8,
 		ls: (bar + bar).split(""),
 		volumeHack: { ls: { 0: 0.5, 32: 1 } },
+		speedHack: { 1: 10, 9: 20 },
 		openRepeats: [1, 9]
 	});
 
-	// Adding an iteration appends a copy of the repeated unit and shifts later volume points and open-repeat beats
+	// Adding an iteration appends a copy of the repeated unit and shifts later volume points and speed/open-repeat beats
 	setSegmentRepeatCount(pattern, { startBar: 0, bars: 1, repeat: 2 }, 3);
 	expect(pattern.length).toBe(12);
 	expect(pattern.ls.join("")).toBe(bar + bar + bar);
 	expect(pattern.volumeHack).toEqual({ ls: { 0: 0.5, 48: 1 } });
+	expect(pattern.speedHack).toEqual({ 1: 10, 13: 20 });
 	expect(pattern.openRepeats).toEqual([1, 13]);
 
 	// Removing iterations drops the strokes (and volume points) of the removed region and shifts the rest back
@@ -80,5 +82,17 @@ test('setSegmentRepeatCount', () => {
 	expect(pattern.length).toBe(4);
 	expect(pattern.ls.join("")).toBe(bar);
 	expect(pattern.volumeHack).toEqual({ ls: { 0: 0.5, 16: 1 } });
+	expect(pattern.speedHack).toEqual({ 1: 10, 5: 20 });
 	expect(pattern.openRepeats).toEqual([1, 5]);
+});
+
+test('speedHack', () => {
+	// The speed hack is kept by the compressed pattern format
+	expect(patternFromCompressed({ length: 4, speedHack: { 5: 10 } } as CompressedPattern).speedHack).toEqual({ 5: 10 });
+
+	// The speed hack is part of pattern equality (e.g. for detecting local changes)
+	const pattern = normalizePattern({ speedHack: { 5: 10 } });
+	expect(patternEquals(pattern, normalizePattern({ speedHack: { 5: 10 } }))).toBe(true);
+	expect(patternEquals(pattern, normalizePattern({ speedHack: { 5: 20 } }))).toBe(false);
+	expect(patternEquals(pattern, normalizePattern({}))).toBe(false);
 });

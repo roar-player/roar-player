@@ -1,9 +1,9 @@
 import config, { Instrument } from "../../config";
-import { CondensedSegment } from "../../state/condensed";
+import { CondensedSegment, CondensedTempoMark } from "../../state/condensed";
 import { getI18n } from "../../services/i18n";
 
 /**
- * Label helpers for the repeat/volume annotations of the condensed pattern representation (see
+ * Label helpers for the repeat/volume/tempo annotations of the condensed pattern representation (see
  * src/state/condensed.ts), shared between the printable tune sheets and the pattern player.
  */
 
@@ -56,4 +56,33 @@ export function getAnnotationText(segment: CondensedSegment): string | undefined
 		text = `${names}: ${text}`;
 	}
 	return `(${text})`;
+}
+
+/**
+ * The glyph of the tempo marks at a bar line: “♩+” for a speed-up, “♩−” for a slow-down. Several marks at the
+ * same bar (e.g. a step into a block plus an accelerando over its repetitions) share one glyph.
+ */
+export function getTempoMarkGlyph(marks: CondensedTempoMark[]): string {
+	return marks[marks.length - 1].step < 0 ? "♩−" : "♩+";
+}
+
+/** Formats a bpm delta with an explicit sign, e.g. “+10” or “−10”. */
+function formatBpmDelta(bpm: number): string {
+	return `${bpm < 0 ? "−" : "+"}${Math.abs(bpm)}`;
+}
+
+/**
+ * The tooltip of the tempo marks at a bar line, naming the exact bpm deltas (which are not printed on the
+ * sheets — the actual speed is not fixed, everything scales with the playback speed).
+ */
+export function getTempoMarkTooltip(marks: CondensedTempoMark[]): string {
+	const i18n = getI18n();
+	return marks.map((mark) => {
+		if (mark.iterations != null) {
+			return i18n.t("condensed.tempo-each", { bpm: formatBpmDelta(mark.step), total: formatBpmDelta(mark.delta) });
+		}
+		return mark.delta === mark.step
+			? i18n.t("condensed.tempo-step", { bpm: formatBpmDelta(mark.step) })
+			: i18n.t("condensed.tempo-step-total", { bpm: formatBpmDelta(mark.step), total: formatBpmDelta(mark.delta) });
+	}).join("\n");
 }

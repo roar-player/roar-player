@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { createPattern, getPatternFromState } from "../state/state";
-	import { patternToBeatbox, rawPatternPlaybackSettings, RawPatternWithUpbeat, stopAllPlayers } from "../services/player";
+	import { beatToRawPosition, patternToBeatbox, rawPatternPlaybackSettings, RawPatternWithUpbeat, stopAllPlayers } from "../services/player";
 	import { normalizePlaybackSettings, PlaybackSettings } from "../state/playbackSettings";
-	import config from "../config";
 	import defaultTunes from "../defaultTunes";
 	import { patternEquals } from "../state/pattern";
 	import { DragType, PatternDragData, setDragData } from "../services/draggable";
@@ -90,7 +89,10 @@
 
 		const result = patternToBeatbox(pattern.value ?? {}, rawPatternSettings.value);
 		if (rawPatternSettings.value.length) {
-			return Object.assign(result.slice(0, rawPatternSettings.value.length * config.playTime + pattern.value.upbeat), { upbeat: result.upbeat });
+			// Convert the cut-off beat through the tempo map (see the speed hack), as the raw positions behind
+			// a tempo change no longer correspond 1:1 to the musical grid
+			const cut = Math.round(beatToRawPosition(rawPatternSettings.value.length, result));
+			return Object.assign(result.slice(0, cut), { upbeat: result.upbeat, tempoMap: result.tempoMap });
 		} else {
 			return result;
 		}

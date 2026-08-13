@@ -10,6 +10,7 @@ import { decode } from "base64-arraybuffer";
 import { computed, ComputedRef, reactive } from "vue";
 import { isEqual } from "lodash-es";
 import { clone } from "../utils";
+import { buildTempoMap, gridToReal, realToGrid, resamplePattern, TempoMapSegment, TempoMark } from "./tempo";
 
 export interface BeatboxReference {
 	id: number;
@@ -18,7 +19,42 @@ export interface BeatboxReference {
 }
 
 export interface RawPatternWithUpbeat extends RawPattern {
-	upbeat: number
+	upbeat: number;
+	/**
+	 * Set if the pattern contains tempo changes (through the speed hack, see src/services/tempo.ts): the
+	 * mapping between the positions of the resampled pattern and the musical grid of config.playTime slots
+	 * per beat. Use rawPositionToBeat()/beatToRawPosition() to convert.
+	 */
+	tempoMap?: TempoMapSegment[];
+}
+
+/** Converts a raw position of the given pattern (as returned by Beatbox.getPosition()) to a beat number (0 = first regular beat). */
+export function rawPositionToBeat(position: number, rawPattern: RawPatternWithUpbeat): number {
+	const grid = rawPattern.tempoMap ? realToGrid(rawPattern.tempoMap, position) : position;
+	return (grid - rawPattern.upbeat) / config.playTime;
+}
+
+/** Converts a beat number (0 = first regular beat, can be fractional) to a raw position of the given pattern. */
+export function beatToRawPosition(beat: number, rawPattern: RawPatternWithUpbeat): number {
+	const grid = beat * config.playTime + rawPattern.upbeat;
+	return rawPattern.tempoMap ? gridToReal(rawPattern.tempoMap, grid) : grid;
+}
+
+/** The speed factor that a speed hack delta (in bpm relative to the given base speed) corresponds to. */
+function getSpeedFactor(baseSpeed: number, delta: number): number {
+	return Math.max(0.1, (baseSpeed + delta) / baseSpeed);
+}
+
+/** Bakes the given tempo marks into the raw pattern by resampling it (see src/services/tempo.ts). */
+function applyTempoMarks(raw: RawPatternWithUpbeat, marks: TempoMark[]): RawPatternWithUpbeat {
+	const tempoMap = buildTempoMap(marks);
+	if (!tempoMap) {
+		return raw;
+	}
+	return Object.assign(resamplePattern(raw, tempoMap), {
+		upbeat: raw.upbeat,
+		tempoMap
+	});
 }
 
 for(const i in audioFiles) {
@@ -148,9 +184,14 @@ export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSet
 		ret[i*fac] = stroke;
 	}
 
-	return Object.assign(ret, {
+	const marks: TempoMark[] = Object.keys(pattern.speedHack ?? {}).map(Number).map((beat) => ({
+		slot: pattern.upbeat * fac + (beat - 1) * config.playTime,
+		factor: getSpeedFactor(pattern.speed, pattern.speedHack![beat])
+	}));
+
+	return applyTempoMarks(Object.assign(ret, {
 		upbeat: pattern.upbeat * fac
-	});
+	}), marks);
 }
 
 export function songToBeatbox(song: SongParts, state: State, playbackSettings: PlaybackSettings): RawPatternWithUpbeat {
@@ -183,6 +224,38 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 		}
 	}
 
+	// Collect the tempo changes (through the speed hacks of the referenced patterns) of the whole song. A speed
+	// hack point stays in effect until the next one, also across the following patterns. This is independent of
+	// muted/headphoned instruments (muting an instrument does not change the tempo of the song); when several
+	// simultaneous patterns define a speed hack for the same beat, the first instrument (in the order of
+	// config.instrumentKeys) wins. The slots are relative to song beat 0 (the song upbeat is added below, once
+	// it is known).
+	const tempoMarks: TempoMark[] = [];
+	const tempoMarkSlots = new Set<number>();
+	for(let i=0; i<length; i++) {
+		for(const inst of config.instrumentKeys) {
+			const patternReference = song[i] && song[i][inst];
+			const pattern = patternReference && getPatternFromState(state, patternReference);
+			if(!pattern || !pattern.speedHack)
+				continue;
+
+			let patternLength = 1;
+			for(let j=i+1; j<i+pattern.length && (!song[j] || !song[j][inst]); j++) // Check if pattern is cut off
+				patternLength++;
+
+			for(const beat of Object.keys(pattern.speedHack).map(Number)) {
+				if(beat - 1 >= patternLength)
+					continue; // The speed hack point lies within the cut-off part of the pattern
+
+				const slot = (i + beat - 1) * config.playTime;
+				if(!tempoMarkSlots.has(slot)) {
+					tempoMarkSlots.add(slot);
+					tempoMarks.push({ slot, factor: getSpeedFactor(pattern.speed, pattern.speedHack[beat]) });
+				}
+			}
+		}
+	}
+
 	for(let i=0; i<length; i++) {
 		for(const inst of config.instrumentKeys) {
 			if(isEnabled(inst, playbackSettings.headphones, playbackSettings.mute) && song[i] && song[i][inst]) {
@@ -208,9 +281,9 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 		}
 	}
 
-	return Object.assign(ret.slice(maxUpbeat - upbeat), {
+	return applyTempoMarks(Object.assign(ret.slice(maxUpbeat - upbeat), {
 		upbeat
-	});
+	}), tempoMarks.map((mark) => ({ slot: mark.slot + upbeat, factor: mark.factor })));
 }
 
 export function stopAllPlayers(): void {

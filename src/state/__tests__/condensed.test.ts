@@ -502,4 +502,119 @@ describe("getCondensedPattern", () => {
 			{ startBar: 1, bars: 1, repeat: 1 }
 		]);
 	});
+
+	test("emits a tempo mark at the bar of a speed change", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 8,
+			ls: "X               " + "X X X X X X X X ",
+			speedHack: { 5: 10 }
+		}));
+
+		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10, delta: 10 }]);
+	});
+
+	test("reports the step and the total delta of consecutive speed changes", () => {
+		const a = "X   X   X   X   ";
+		const b = "X X X X X X X X ";
+		const c = "X  X  X   X X   ";
+		const sheet = getCondensedPattern(makePattern({
+			length: 12,
+			ls: a + b + c,
+			speedHack: { 5: 10, 9: 30, 13: 0 }
+		}));
+
+		expect(sheet.tempoMarks).toEqual([
+			{ bar: 1, step: 10, delta: 10 },
+			{ bar: 2, step: 20, delta: 30 }
+		]);
+	});
+
+	test("drops speed changes that do not change the prevailing speed", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 8,
+			ls: "X               " + "X X X X X X X X ",
+			speedHack: { 1: 0, 5: 10, 7: 10 }
+		}));
+
+		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10, delta: 10 }]);
+	});
+
+	test("condenses a uniform per-iteration speed step with a single mark on the block", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 16,
+			ls: "X X X X X X X X ".repeat(4),
+			speedHack: { 5: 10, 9: 20, 13: 30 }
+		}));
+
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 4, tempoStep: 10 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, delta: 30, iterations: 4 }]);
+	});
+
+	test("re-anchors the repetition detection at a speed change", () => {
+		// 4 identical bars with a speed change in the middle: no repetition may extend across the change, so
+		// the bars condense into two 2-bar units with the speed stepping up at the second one
+		const sheet = getCondensedPattern(makePattern({
+			length: 16,
+			ls: "X X X X X X X X ".repeat(4),
+			speedHack: { 9: 10 }
+		}));
+
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 2, tempoStep: 10 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, delta: 10, iterations: 2 }]);
+	});
+
+	test("does not condense non-uniform speed steps across repetitions", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 12,
+			ls: "X X X X X X X X ".repeat(3),
+			speedHack: { 5: 10, 9: 15 }
+		}));
+
+		// Only the first two bars (one uniform step) can be condensed
+		expect(sheet.segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 2, tempoStep: 10 },
+			{ startBar: 2, bars: 1, repeat: 1 }
+		]);
+		expect(sheet.tempoMarks).toEqual([
+			{ bar: 0, step: 10, delta: 10, iterations: 2 },
+			{ bar: 2, step: 5, delta: 15 }
+		]);
+	});
+
+	test("does not treat a speed change that is not on a bar start as a per-iteration step", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 8,
+			ls: "X X X X X X X X ".repeat(2),
+			speedHack: { 6: 10 }
+		}));
+
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 2, repeat: 1 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 1, step: 10, delta: 10 }]);
+	});
+
+	test("combines a per-iteration speed step with a crescendo annotation", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 8,
+			ls: "X X X X X X X X ".repeat(2),
+			volumeHack: { 0: 0.4, 16: 1 },
+			speedHack: { 5: 10 }
+		}));
+
+		expect(sheet.segments).toEqual([{ startBar: 0, bars: 1, repeat: 2, dynamics: "crescendo", tempoStep: 10 }]);
+		expect(sheet.tempoMarks).toEqual([{ bar: 0, step: 10, delta: 10, iterations: 2 }]);
+	});
+
+	test("renders every speed change as its own mark with condense: false", () => {
+		const sheet = getCondensedPattern(makePattern({
+			length: 16,
+			ls: "X X X X X X X X ".repeat(4),
+			speedHack: { 5: 10, 9: 20, 13: 30 }
+		}), { condense: false });
+
+		expect(sheet.tempoMarks).toEqual([
+			{ bar: 1, step: 10, delta: 10 },
+			{ bar: 2, step: 10, delta: 20 },
+			{ bar: 3, step: 10, delta: 30 }
+		]);
+	});
 });

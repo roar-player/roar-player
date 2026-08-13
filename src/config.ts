@@ -303,8 +303,11 @@ const config: Config = {
 		20: () => getI18n().t("config.time-with-quintuplets", { time: "4⁄4" })
 	},
 
-	// Time measurement that is used for beatbox.js. Should be able to represent all the time measurements above
-	playTime: 120,
+	// Time measurement that is used for beatbox.js. Should be able to represent all the time measurements above.
+	// 720 is the least common multiple of all supported subdivisions (2–24, including 9 and 16). The high
+	// resolution also keeps the rounding error of tempo changes (see the speed hack) below one slot, which is
+	// ~1.4ms at 60bpm and thus inaudible.
+	playTime: 720,
 
 	filterCats: {
 		all: () => getI18n().t("config.category-all"),

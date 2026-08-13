@@ -17,8 +17,8 @@
 	import config, { Instrument } from "../../config";
 	import { BeatboxReference, createBeatbox, patternToBeatbox, rawPatternPlaybackSettings } from "../../services/player";
 	import { patternEquals, PatternSegment, setSegmentRepeatCount, updateStrokeMirrored } from "../../state/pattern";
-	import { getCondensedPattern } from "../../state/condensed";
-	import { getAnnotationText } from "../utils/condensed-annotations";
+	import { CondensedTempoMark, getCondensedPattern } from "../../state/condensed";
+	import { getAnnotationText, getTempoMarkGlyph, getTempoMarkTooltip } from "../utils/condensed-annotations";
 	import { normalizePlaybackSettings, PlaybackSettings, updatePlaybackSettings } from "../../state/playbackSettings";
 	import { createPattern, getPatternFromState } from "../../state/state";
 	import { clone } from "../../utils";
@@ -149,6 +149,22 @@
 	}));
 
 	const hasIndicatorRow = computed(() => indicatorCells.value.some((cell) => cell.hasIndicator));
+
+	/** The tempo marks (♩+/♩− at bar lines, through the speed hack) by the bar they are rendered at. */
+	const tempoMarksByBar = computed(() => {
+		const ret = new Map<number, CondensedTempoMark[]>();
+		for (const mark of renderedPattern.value.tempoMarks) {
+			const existing = ret.get(mark.bar);
+			if (existing) {
+				existing.push(mark);
+			} else {
+				ret.set(mark.bar, [mark]);
+			}
+		}
+		return ret;
+	});
+
+	const hasTempoRow = computed(() => tempoMarksByBar.value.size > 0);
 
 	/** While playing inside a repeated block, the block and the iteration (0-based) the position is in. */
 	const playbackIteration = ref<{ segmentIdx: number; iteration: number }>();
@@ -403,7 +419,8 @@
 			// block seeks to its first iteration
 			const strokes = renderedStrokes.value;
 			const stroke = strokes[Math.max(0, Math.min(strokes.length - 1, Math.floor(fraction * strokes.length)))];
-			abstractPlayerRef.value!.setPosition(Math.floor(stroke.i * config.playTime / pattern.value.time));
+			// Seek by beat, so that the tempo changes of the pattern (through the speed hack) are taken into account
+			abstractPlayerRef.value!.setBeat((stroke.i - pattern.value.upbeat) / pattern.value.time);
 		}
 	};
 
@@ -510,6 +527,17 @@
 		<div class="bb-pattern-player-container" ref="containerRef">
 			<table class="bb-pattern-player" :class="[`time-${pattern.time}`, readonly ? 'listen' : 'compose']" translate="no">
 				<thead>
+					<tr v-if="hasTempoRow" class="tempo-row">
+						<td colspan="2"></td>
+						<td v-if="pattern.upbeat > 0" :colspan="pattern.upbeat"></td>
+						<td
+							v-for="bar in renderBars"
+							:key="bar.barIdx"
+							:colspan="bar.beats * pattern.time"
+							class="tempo-mark-cell"
+							:class="{ 'has-mark': tempoMarksByBar.has(bar.barIdx) }"
+						><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" v-tooltip="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkGlyph(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
+					</tr>
 					<tr v-if="hasIndicatorRow" class="indicator-row">
 						<td colspan="2"></td>
 						<td v-if="pattern.upbeat > 0" :colspan="pattern.upbeat"></td>
@@ -663,9 +691,25 @@
 				padding-bottom: .5ex;
 			}
 
-			thead tr.indicator-row td {
+			thead tr.indicator-row td,
+			thead tr.tempo-row td {
 				border-bottom: none;
 				padding-bottom: 0;
+			}
+
+			thead td.tempo-mark-cell {
+				font-size: 0.85em;
+				font-weight: bold;
+				text-align: left;
+				white-space: nowrap;
+				padding: 0 0.5ex 0.25ex;
+				overflow: visible;
+
+				// The bar line is extended up through the tempo row at the marked bar, so that the mark
+				// visually sits on the bar line where the tempo changes
+				&.has-mark {
+					border-left: 2px solid #888;
+				}
 			}
 
 			thead td.repeat-count {

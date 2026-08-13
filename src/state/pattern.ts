@@ -36,6 +36,18 @@ export const instrumentVolumeHackValidator = transformValidator(strictInstrument
 	}
 }, strictInstrumentVolumeHackValidator);
 
+/**
+ * A (hacky) way to specify tempo changes at certain beats of a pattern.
+ * A record where the key is the 1-based beat number (as shown in the condensed pattern representation, like
+ * openRepeats) and the value is the speed delta in bpm relative to the pattern's base speed (`speed`), so the
+ * values scale along when the playback speed is changed. Values are not cumulative: each one states the total
+ * delta that applies from its beat on. A value stays in effect until the next speed hack point — also across
+ * the following patterns when played as part of a song. Beats should be bar starts (beat 1, 5, 9, …), as the
+ * tune sheets and the pattern player annotate the changes at bar lines.
+ */
+export type SpeedHack = z.infer<typeof speedHackValidator>;
+export const speedHackValidator = numberRecordValidator(z.number());
+
 type PatternProperties = z.infer<typeof patternPropertiesValidator>;
 const patternPropertiesValidator = z.object({
 	length: z.number().default(4),
@@ -45,6 +57,7 @@ const patternPropertiesValidator = z.object({
 	loop: z.boolean().default(false),
 	displayName: z.string().optional(),
 	volumeHack: instrumentVolumeHackValidator.optional(),
+	speedHack: speedHackValidator.optional(),
 	/** If true, the pattern is not printed on the generated tune sheets (see src/ui/sheet/). */
 	hideFromSheet: z.boolean().optional(),
 	/**
@@ -197,6 +210,8 @@ export function patternEquals(pattern: Pattern, pattern2: Pattern): boolean {
 		return false;
 	if(!isEqual(pattern.volumeHack, pattern2.volumeHack))
 		return false;
+	if(!isEqual(pattern.speedHack, pattern2.speedHack))
+		return false;
 
 	const length = pattern.length * pattern.time + pattern.upbeat;
 	for(const instr of config.instrumentKeys) {
@@ -227,6 +242,8 @@ export function patternFromCompressed(encodedPatternObject: CompressedPattern, o
 		ret.upbeat = 0;
 	if(encodedPatternObject.volumeHack != null)
 		ret.volumeHack = encodedPatternObject.volumeHack;
+	if(encodedPatternObject.speedHack != null)
+		ret.speedHack = encodedPatternObject.speedHack;
 	if(encodedPatternObject.hideFromSheet != null)
 		ret.hideFromSheet = encodedPatternObject.hideFromSheet;
 	if(encodedPatternObject.openRepeats != null)
@@ -332,8 +349,8 @@ export function updateStrokeMirrored(pattern: Pattern, instrument: Instrument, i
 /**
  * Changes how often the given repeated segment is played by appending copies of (or removing iterations of) its
  * repeated unit at the end of the block, adjusting the pattern length accordingly. The stroke indexes of the
- * volume hack and the beat numbers of openRepeats that lie behind the changed region are shifted along so
- * that they keep referring to the same strokes (volume points within a removed region are dropped).
+ * volume hack and the beat numbers of the speed hack and of openRepeats that lie behind the changed region are
+ * shifted along so that they keep referring to the same strokes (points within a removed region are dropped).
  */
 export function setSegmentRepeatCount(pattern: Pattern, segment: PatternSegment, newRepeat: number): void {
 	newRepeat = Math.max(1, Math.round(newRepeat));
@@ -381,10 +398,23 @@ export function setSegmentRepeatCount(pattern: Pattern, segment: PatternSegment,
 		}
 	}
 
+	const shiftBeats = (newRepeat - segment.repeat) * segment.bars * 4;
+	const changeStartBeat = (changeStart - pattern.upbeat) / pattern.time;
+	const blockEndBeat = (blockEnd - pattern.upbeat) / pattern.time;
+
+	if(pattern.speedHack) {
+		const updated: SpeedHack = {};
+		for(const beat of Object.keys(pattern.speedHack).map(Number)) {
+			if(beat - 1 < changeStartBeat)
+				updated[beat] = pattern.speedHack[beat];
+			else if(beat - 1 >= blockEndBeat)
+				updated[beat + shiftBeats] = pattern.speedHack[beat];
+			// Speed points within a removed iteration are dropped
+		}
+		pattern.speedHack = updated;
+	}
+
 	if(pattern.openRepeats) {
-		const shiftBeats = (newRepeat - segment.repeat) * segment.bars * 4;
-		const changeStartBeat = (changeStart - pattern.upbeat) / pattern.time;
-		const blockEndBeat = (blockEnd - pattern.upbeat) / pattern.time;
 		pattern.openRepeats = pattern.openRepeats
 			.filter((beat) => beat - 1 < changeStartBeat || beat - 1 >= blockEndBeat)
 			.map((beat) => (beat - 1 >= blockEndBeat ? beat + shiftBeats : beat));

@@ -14,8 +14,8 @@
 <script setup lang="ts">
 	import config from "../../config";
 	import { Pattern } from "../../state/pattern";
-	import { getCondensedPattern, CondensedRow } from "../../state/condensed";
-	import { getAnnotationText, getInstrumentsLabel } from "../utils/condensed-annotations";
+	import { getCondensedPattern, CondensedRow, CondensedTempoMark } from "../../state/condensed";
+	import { getAnnotationText, getInstrumentsLabel, getTempoMarkGlyph, getTempoMarkTooltip } from "../utils/condensed-annotations";
 	import { computed } from "vue";
 	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
 
@@ -101,6 +101,20 @@
 			};
 		});
 	};
+
+	/** The tempo marks (♩+/♩− at bar lines, through the speed hack) by the bar they are rendered at. */
+	const tempoMarksByBar = computed(() => {
+		const ret = new Map<number, CondensedTempoMark[]>();
+		for (const mark of sheet.value.tempoMarks) {
+			const existing = ret.get(mark.bar);
+			if (existing) {
+				existing.push(mark);
+			} else {
+				ret.set(mark.bar, [mark]);
+			}
+		}
+		return ret;
+	});
 
 	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
 	const lines = computed((): RenderBar[][] => {
@@ -237,6 +251,11 @@
 
 		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`" translate="no">
 			<thead>
+				<tr v-if="line.some((bar) => tempoMarksByBar.has(bar.barIdx))">
+					<th class="row-label"></th>
+					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
+					<td v-for="bar in line" :key="bar.barIdx" :colspan="bar.beats * sheet.time" class="tempo-mark-cell" :class="{ 'has-mark': tempoMarksByBar.has(bar.barIdx) }"><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" :title="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkGlyph(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
+				</tr>
 				<tr v-if="line.some((bar) => bar.hasIndicator)">
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
@@ -329,6 +348,21 @@
 					border-right: 1.5pt solid #000;
 				}
 
+			}
+
+			td.tempo-mark-cell {
+				font-size: 8pt;
+				font-weight: bold;
+				text-align: left;
+				padding-left: 1mm;
+				height: 4.8mm;
+				vertical-align: bottom;
+
+				// The bar line is extended up through the tempo row at the marked bar, so that the mark
+				// visually sits on the bar line where the tempo changes
+				&.has-mark {
+					border-left: 1.5pt solid #000;
+				}
 			}
 
 			td.repeat-count {

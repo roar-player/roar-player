@@ -102,7 +102,10 @@
 		abstractPlayerRef.value!.setBeat(percent * length);
 	};
 
-	const getPositionMarkerLeft = ({ position, player }: PositionData<false>) => (position / player._pattern.length) * getSongWidth();
+	// Beat-based (rather than position-based), so that the marker stays aligned with the beat-proportional
+	// pattern cards when the raw pattern contains tempo changes (through the speed hack)
+	const getPositionMarkerLeft = ({ beat }: PositionData<false>) =>
+		(Math.max(0, beat) / getEffectiveSongLength(songParts.value, state.value)) * getSongWidth();
 
 	const handleDownload = () => {
 		void download({
