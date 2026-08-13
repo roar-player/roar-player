@@ -70,7 +70,10 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		element._bbScroll.scrollTarget = undefined;
 	}
 
-	const fac1 = (scrollFurther ? 0.1 : 0);
+	// With scrollFurther, a page turn is triggered as soon as the element passes 65% of the viewport (so that
+	// at least the upcoming 35% remain readable, e.g. to play along during playback) and advances the view so
+	// that the element lands at 10% (leaving the other 90% for reading ahead).
+	const fac1 = (scrollFurther ? 0.35 : 0);
 	const fac2 = (scrollFurther ? 0.9 : 0);
 
 	const scrollTo = (target: number, behavior: "smooth" | "glide") => {
@@ -116,9 +119,10 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 			scrollTo(target, "smooth");
 		else if(left < scrollLeft)
 			// When the element jumped backwards during playback (scrollFurther), glide back to the same reading
-			// position as when scrolling forward: any other position would immediately trigger a forward scroll
-			// again as the element moves on.
-			scrollTo(scrollFurther ? target : left, scrollFurther ? "glide" : "smooth");
+			// position as when scrolling forward (any other position would immediately trigger a forward scroll
+			// again as the element moves on) — except when the jump goes near the start, then all the way, so
+			// that the beginning of the content (e.g. the instrument names) becomes visible again.
+			scrollTo(scrollFurther ? (target < element._bbScroll.parent.offsetWidth / 2 ? 0 : target) : left, scrollFurther ? "glide" : "smooth");
 	} else if(left >= element._bbScroll.parent.scrollLeft && left + element.offsetWidth <= element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth)
 		element._bbScroll.scrollingDisabled = false;
 }
