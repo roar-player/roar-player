@@ -9,9 +9,10 @@ declare global {
 			scrollingDisabled: boolean;
 			/** The scrollLeft that our own smooth scroll is currently animating towards, if any. */
 			scrollTarget?: number;
-			/** When the current scrollTarget was set, used to expire animations that were silently interrupted. */
+			/** When a scrollTarget was last set, used to attribute scroll events to our own animations (which
+			 * can trail behind, e.g. when a scroll-back supersedes a running page turn) and to expire animations
+			 * that were interrupted without us noticing. */
 			scrollTargetTime?: number;
-			lastScrollLeft: number;
 		}
 	}
 }
@@ -41,22 +42,40 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		element._bbScroll = {
 			parent: curEl,
 			left,
-			scrollingDisabled: false,
-			lastScrollLeft: curEl.scrollLeft
+			scrollingDisabled: false
+		};
+
+		// Suspend the automatic scrolling when the user scrolls manually (it resumes once the element is fully
+		// visible again). User intent is detected from input events (which fire regardless of any animation of
+		// ours), because scroll events alone cannot distinguish a scroll gesture from a running animation in the
+		// same direction. The scroll listener only detects the arrival of our animations, plus manual scrolling
+		// that produces no input events on the container (e.g. dragging a scrollbar).
+		const suspend = () => {
+			const scroll = element._bbScroll!;
+			scroll.scrollTarget = undefined;
+			scroll.scrollingDisabled = true;
 		};
 		element._bbScroll.parent.addEventListener("scroll", () => {
 			const scroll = element._bbScroll!;
-			const scrollLeft = scroll.parent.scrollLeft;
-			if(scroll.scrollTarget != null && Math.abs(scrollLeft - scroll.scrollTarget) <= 1) {
-				// Our own smooth scroll has arrived at its target
+			if(scroll.scrollTarget != null && Math.abs(scroll.parent.scrollLeft - scroll.scrollTarget) <= 1) {
+				// Our own animation has arrived at its target
 				scroll.scrollTarget = undefined;
-			} else if(scroll.scrollTarget == null || (scrollLeft - scroll.lastScrollLeft) * (scroll.scrollTarget - scroll.lastScrollLeft) < 0) {
-				// Not our own smooth scroll on its way towards its target, so the user scrolled manually:
-				// suspend the automatic scrolling (it resumes once the element is fully visible again)
-				scroll.scrollTarget = undefined;
-				scroll.scrollingDisabled = true;
+			} else if(scroll.scrollTarget == null && Date.now() - (scroll.scrollTargetTime ?? 0) > 600) {
+				// No animation of ours is running or has recently finished (whose trailing events could still
+				// arrive), so this must be a manual scroll that the input listeners cannot see
+				suspend();
 			}
-			scroll.lastScrollLeft = scrollLeft;
+		});
+		// Only horizontal wheel gestures: a vertical wheel over the container scrolls the page, not the container
+		element._bbScroll.parent.addEventListener("wheel", (event) => {
+			if(event.deltaX != 0 || event.shiftKey)
+				suspend();
+		}, { passive: true });
+		element._bbScroll.parent.addEventListener("touchmove", suspend, { passive: true });
+		// A pointerdown on the container element itself (not on any content) means grabbing the scrollbar
+		element._bbScroll.parent.addEventListener("pointerdown", (event) => {
+			if(event.target == element._bbScroll!.parent)
+				suspend();
 		});
 	}
 
@@ -89,6 +108,9 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 				// A quick ease-out glide, rather than the browser's smooth scrolling (which takes its time and
 				// would leave the element out of sight for most of the animation): the view leaves quickly and
 				// decelerates into the target, so the eye can follow where it lands.
+				// An instant no-op scroll first, so that a still-running browser animation (e.g. a page turn
+				// that this glide interrupts) is cancelled before the glide's first frame rather than by it.
+				scroll.parent.scroll({ left: scroll.parent.scrollLeft, behavior: 'auto' });
 				const from = scroll.parent.scrollLeft;
 				const duration = Math.min(400, 150 + Math.abs(clamped - from) / 4);
 				const start = performance.now();
