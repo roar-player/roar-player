@@ -34,6 +34,7 @@
 	import MuteButton from "../playback-settings/mute-button.vue";
 	import HeadphonesButton from "../playback-settings/headphones-button.vue";
 	import AbstractPlayer, { PositionData } from "../utils/abstract-player.vue";
+	import type { FollowPlaybackContext } from "../../services/utils";
 	import { useI18n } from "../../services/i18n";
 
 	type StrokeDropdownInfo = {
@@ -250,9 +251,7 @@
 	 * run a DOM query on every frame. Entries are validated before use, so re-renders need no invalidation. */
 	const strokeElCache = new Map<number, HTMLElement>();
 
-	const getPositionMarkerLeft = ({ beat }: PositionData<false>) => {
-		const stroke = getBeatLocation(beat).beat * pattern.value.time;
-		const strokeIdx = Math.floor(stroke);
+	const getStrokeEl = (strokeIdx: number): HTMLElement | undefined => {
 		let strokeEl = strokeElCache.get(strokeIdx);
 		if (!strokeEl?.isConnected || !strokeEl.classList.contains(`stroke-i-${strokeIdx}`)) {
 			strokeEl = containerRef.value!.querySelector<HTMLElement>(".stroke-i-"+strokeIdx) ?? undefined;
@@ -260,7 +259,41 @@
 				strokeElCache.set(strokeIdx, strokeEl);
 			}
 		}
+		return strokeEl;
+	};
+
+	const getPositionMarkerLeft = ({ beat }: PositionData<false>) => {
+		const stroke = getBeatLocation(beat).beat * pattern.value.time;
+		// At the very end of the pattern, the position points one past the last stroke — clamp to the last cell
+		const strokeIdx = Math.min(Math.floor(stroke), pattern.value.length * pattern.value.time - 1);
+		const strokeEl = getStrokeEl(strokeIdx);
 		return strokeEl ? (strokeEl.offsetLeft + strokeEl.offsetWidth * (stroke - strokeIdx)) : 0;
+	};
+
+	/** The playback context for the scrolling that follows the position marker: the read-ahead ensures the next
+	 * 3 beats stay visible, and while a repeated block is playing, its pixel range lets the scrolling keep the
+	 * whole block in view (when it fits) or avoid a page turn right before jumping back to the block start. */
+	const getScrollContext = ({ beat }: PositionData<false>) => {
+		const location = getBeatLocation(beat);
+		const strokeIdx = Math.min(Math.max(0, Math.floor(location.beat * pattern.value.time)), pattern.value.length * pattern.value.time - 1);
+		const strokeWidth = getStrokeEl(strokeIdx)?.offsetWidth ?? 0;
+		const context: FollowPlaybackContext = { aheadWidth: 3 * pattern.value.time * strokeWidth };
+		if (condensed.value && location.segmentIdx != null) {
+			const segment = renderedPattern.value.segments[location.segmentIdx];
+			const startEl = getStrokeEl(segment.startBar * barStrokes.value);
+			const endStroke = (segment.startBar + segment.bars) * barStrokes.value;
+			// For a block at the end of the pattern, there is no cell after it — use the last cell's right edge
+			const afterEl = getStrokeEl(endStroke);
+			const lastEl = afterEl ?? getStrokeEl(endStroke - 1);
+			if (startEl && lastEl) {
+				context.block = {
+					start: startEl.offsetLeft,
+					end: afterEl ? afterEl.offsetLeft : lastEl.offsetLeft + lastEl.offsetWidth,
+					final: location.iteration != null && location.iteration >= segment.repeat - 1
+				};
+			}
+		}
+		return context;
 	};
 
 
@@ -527,6 +560,7 @@
 				:rawPattern="rawPattern"
 				:playbackSettings="playbackSettings"
 				:getLeft="getPositionMarkerLeft"
+				:getScrollContext="getScrollContext"
 				@position="handlePosition"
 				ref="abstractPlayerRef"
 			/>

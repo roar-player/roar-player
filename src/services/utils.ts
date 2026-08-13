@@ -1,29 +1,35 @@
 import config from "../config";
 import { getI18n } from "./i18n";
 
+type ScrollState = {
+	parent: HTMLElement;
+	/** The offset between the tracked element's offsetLeft and its position within the scroll parent. */
+	left: number;
+	/** Set when the user scrolled manually; suppresses all automatic scrolling until the element is visible again. */
+	scrollingDisabled: boolean;
+	/** The scrollLeft that our own scroll animation is currently animating towards, if any. */
+	scrollTarget?: number;
+	/** When a scrollTarget was last set, used to attribute scroll events to our own animations (which can trail
+	 * behind, e.g. when a scroll-back supersedes a running page turn) and to expire animations that were
+	 * interrupted without us noticing. */
+	scrollTargetTime?: number;
+};
+
 declare global {
 	interface HTMLElement {
-		_bbScroll?: {
-			parent: HTMLElement;
-			left: number;
-			scrollingDisabled: boolean;
-			/** The scrollLeft that our own smooth scroll is currently animating towards, if any. */
-			scrollTarget?: number;
-			/** When a scrollTarget was last set, used to attribute scroll events to our own animations (which
-			 * can trail behind, e.g. when a scroll-back supersedes a running page turn) and to expire animations
-			 * that were interrupted without us noticing. */
-			scrollTargetTime?: number;
-		}
+		_bbScroll?: ScrollState;
 	}
 }
 
 /**
- * Scrolls the nearest scrollable ancestor so that the element is visible, unless the user has scrolled manually
- * (until the element is fully visible again). With scrollFurther, the view is advanced so that most of the
- * upcoming content is visible (used to follow the position marker during playback). leftInParent overrides the
- * element's horizontal position, for elements that are positioned through a transform (which offsetLeft ignores).
+ * Finds (and caches) the nearest scrollable ancestor of the element and sets up the manual-scroll detection:
+ * when the user scrolls the container themselves, all automatic scrolling is suspended until the tracked
+ * element is fully visible again. User intent is detected from input events (which fire regardless of any
+ * animation of ours), because scroll events alone cannot distinguish a scroll gesture from a running animation
+ * in the same direction. The scroll listener only detects the arrival of our animations, plus manual scrolling
+ * that produces no input events on the container (e.g. dragging a scrollbar).
  */
-export function scrollToElement(element: HTMLElement, scrollFurther: boolean = false, force: boolean = false, leftInParent?: number): void {
+function getScrollState(element: HTMLElement): ScrollState | undefined {
 	if(!element._bbScroll) {
 		let left = 0;
 		let curEl: HTMLElement | null = element.offsetParent as HTMLElement;
@@ -37,7 +43,7 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		}
 
 		if(!curEl)
-			return;
+			return undefined;
 
 		element._bbScroll = {
 			parent: curEl,
@@ -45,11 +51,6 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 			scrollingDisabled: false
 		};
 
-		// Suspend the automatic scrolling when the user scrolls manually (it resumes once the element is fully
-		// visible again). User intent is detected from input events (which fire regardless of any animation of
-		// ours), because scroll events alone cannot distinguish a scroll gesture from a running animation in the
-		// same direction. The scroll listener only detects the arrival of our animations, plus manual scrolling
-		// that produces no input events on the container (e.g. dragging a scrollbar).
 		const suspend = () => {
 			const scroll = element._bbScroll!;
 			scroll.scrollTarget = undefined;
@@ -79,74 +80,170 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		});
 	}
 
-	if(force)
-		element._bbScroll.scrollingDisabled = false;
-
 	if(element._bbScroll.scrollTarget != null && Date.now() - (element._bbScroll.scrollTargetTime ?? 0) > 1000) {
-		// Our smooth scroll should long have arrived at its target, so it was probably interrupted without us
+		// Our animation should long have arrived at its target, so it was probably interrupted without us
 		// noticing (e.g. by a touch gesture in the same direction, which the scroll listener cannot tell apart
 		// from the animation itself). Judging the position against the stale target would block any follow-up.
 		element._bbScroll.scrollTarget = undefined;
 	}
 
-	// With scrollFurther, a page turn is triggered as soon as the element passes 65% of the viewport (so that
-	// at least the upcoming 35% remain readable, e.g. to play along during playback) and advances the view so
-	// that the element lands at 10% (leaving the other 90% for reading ahead).
-	const fac1 = (scrollFurther ? 0.35 : 0);
-	const fac2 = (scrollFurther ? 0.9 : 0);
+	return element._bbScroll;
+}
 
-	const scrollTo = (target: number, behavior: "smooth" | "glide") => {
-		const scroll = element._bbScroll!;
-		const clamped = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
-		if(clamped == scroll.parent.scrollLeft) {
-			// Already there, no scroll event will fire that could clear the target
-			scroll.scrollTarget = undefined;
-		} else if(clamped != scroll.scrollTarget) {
-			scroll.scrollTarget = clamped;
-			scroll.scrollTargetTime = Date.now();
-			if(behavior == "glide") {
-				// A quick ease-out glide, rather than the browser's smooth scrolling (which takes its time and
-				// would leave the element out of sight for most of the animation): the view leaves quickly and
-				// decelerates into the target, so the eye can follow where it lands.
-				// An instant no-op scroll first, so that a still-running browser animation (e.g. a page turn
-				// that this glide interrupts) is cancelled before the glide's first frame rather than by it.
-				scroll.parent.scroll({ left: scroll.parent.scrollLeft, behavior: 'auto' });
-				const from = scroll.parent.scrollLeft;
-				const duration = Math.min(400, 150 + Math.abs(clamped - from) / 4);
-				const start = performance.now();
-				const step = (now: number) => {
-					if(scroll.scrollTarget != clamped)
-						return; // Superseded by another scroll or aborted by a user scroll
-					const t = Math.min(1, (now - start) / duration);
-					scroll.parent.scrollLeft = from + (clamped - from) * (1 - (1 - t) ** 3);
-					if(t < 1)
-						requestAnimationFrame(step);
-				};
-				requestAnimationFrame(step);
-			} else {
-				scroll.parent.scroll({ left: clamped, behavior: 'smooth' });
-			}
+/** Starts a scroll animation towards the given scrollLeft (no-op if one towards the same target is running). */
+function scrollTo(scroll: ScrollState, target: number, behavior: "smooth" | "glide"): void {
+	const clamped = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
+	if(Math.abs(clamped - scroll.parent.scrollLeft) <= 1) {
+		// Already there (the actual maximum scroll position can also be a fraction below the computed one, so
+		// a 1px difference must not restart the animation) — and no scroll event will clear the target
+		scroll.scrollTarget = undefined;
+	} else if(clamped != scroll.scrollTarget) {
+		scroll.scrollTarget = clamped;
+		scroll.scrollTargetTime = Date.now();
+		if(behavior == "glide") {
+			// A quick ease-out glide, rather than the browser's smooth scrolling (which takes its time and
+			// would leave the element out of sight for most of the animation): the view leaves quickly and
+			// decelerates into the target, so the eye can follow where it lands.
+			// An instant no-op scroll first, so that a still-running browser animation (e.g. a page turn
+			// that this glide interrupts) is cancelled before the glide's first frame rather than by it.
+			scroll.parent.scroll({ left: scroll.parent.scrollLeft, behavior: 'auto' });
+			const from = scroll.parent.scrollLeft;
+			const duration = Math.min(400, 150 + Math.abs(clamped - from) / 4);
+			const start = performance.now();
+			const step = (now: number) => {
+				if(scroll.scrollTarget != clamped)
+					return; // Superseded by another scroll or aborted by a user scroll
+				const t = Math.min(1, (now - start) / duration);
+				scroll.parent.scrollLeft = from + (clamped - from) * (1 - (1 - t) ** 3);
+				if(t < 1)
+					requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		} else {
+			scroll.parent.scroll({ left: clamped, behavior: 'smooth' });
 		}
-	};
+	}
+}
 
-	// While our own smooth scroll is animating, judge the element position against the target of the animation
-	// rather than the transient scroll position, so that the animation is not needlessly restarted or reverted.
-	const scrollLeft = element._bbScroll.scrollTarget ?? element._bbScroll.parent.scrollLeft;
-	const left = (leftInParent ?? element.offsetLeft) + element._bbScroll.left;
-	if(!element._bbScroll.scrollingDisabled) {
-		// The position that leaves the most upcoming content visible (for scrollFurther, the element close to
-		// the left edge; otherwise aligned with the right edge)
-		const target = left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2);
-		if(left + element.offsetWidth > scrollLeft + element._bbScroll.parent.offsetWidth * (1-fac1))
-			scrollTo(target, "smooth");
-		else if(left < scrollLeft)
-			// When the element jumped backwards during playback (scrollFurther), glide back to the same reading
-			// position as when scrolling forward (any other position would immediately trigger a forward scroll
-			// again as the element moves on) — except when the jump goes near the start, then all the way, so
-			// that the beginning of the content (e.g. the instrument names) becomes visible again.
-			scrollTo(scrollFurther ? (target < element._bbScroll.parent.offsetWidth / 2 ? 0 : target) : left, scrollFurther ? "glide" : "smooth");
-	} else if(left >= element._bbScroll.parent.scrollLeft && left + element.offsetWidth <= element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth)
-		element._bbScroll.scrollingDisabled = false;
+/** Handles the manual-scroll suspension: returns true while automatic scrolling is suspended, re-enabling it
+ * once the tracked position is fully visible again (judged against the real scroll position). */
+function checkSuspended(scroll: ScrollState, left: number, width: number): boolean {
+	if(scroll.scrollingDisabled && left >= scroll.parent.scrollLeft && left + width <= scroll.parent.scrollLeft + scroll.parent.clientWidth) {
+		scroll.scrollingDisabled = false;
+	}
+	return scroll.scrollingDisabled;
+}
+
+/**
+ * Scrolls the nearest scrollable ancestor so that the element is visible, unless the user has scrolled manually
+ * (until the element is fully visible again). leftInParent overrides the element's horizontal position, for
+ * elements that are positioned through a transform (which offsetLeft ignores).
+ */
+export function scrollToElement(element: HTMLElement, force: boolean = false, leftInParent?: number): void {
+	const scroll = getScrollState(element);
+	if(!scroll)
+		return;
+
+	if(force)
+		scroll.scrollingDisabled = false;
+
+	const left = (leftInParent ?? element.offsetLeft) + scroll.left;
+	if(checkSuspended(scroll, left, element.offsetWidth))
+		return;
+
+	// Judge against the target of a running animation of ours, so that it is not needlessly restarted
+	const scrollLeft = scroll.scrollTarget ?? scroll.parent.scrollLeft;
+	if(left + element.offsetWidth > scrollLeft + scroll.parent.clientWidth)
+		scrollTo(scroll, left + element.offsetWidth - scroll.parent.clientWidth, "smooth");
+	else if(left < scrollLeft)
+		scrollTo(scroll, left, "smooth");
+}
+
+/** The playback context that followPlayback() uses to plan its scrolling, in pixel positions within the scroll parent. */
+export type FollowPlaybackContext = {
+	/** How much of the content after the current position should ideally be kept visible ("read-ahead", e.g.
+	 * the width of the next 3 beats). Defaults to 35% of the viewport. */
+	aheadWidth?: number;
+	/** The repeated block that the position is currently playing in, if any. */
+	block?: {
+		start: number;
+		end: number;
+		/** Whether this is the last iteration, i.e. playback will move on instead of jumping back to start. */
+		final: boolean;
+	};
+};
+
+/**
+ * Scrolls the nearest scrollable ancestor of the position marker to follow it during playback, so that the
+ * notes are pleasant to read along. In descending priority: the current position is kept visible; the upcoming
+ * content (aheadWidth) is kept visible; as few scrolls as possible are made (when a scroll is needed, it is a
+ * big step, so that the view then stays calm for a while); and while a repeated block that fits the viewport is
+ * playing, the whole block is kept in view so that its repetitions need no scrolling at all.
+ * Suspended while the user scrolls manually (until the marker is fully visible again); force (used when
+ * playback starts) lifts the suspension.
+ */
+export function followPlayback(element: HTMLElement, left: number, context: FollowPlaybackContext = {}, force: boolean = false): void {
+	const scroll = getScrollState(element);
+	if(!scroll)
+		return;
+
+	if(force)
+		scroll.scrollingDisabled = false;
+
+	const pos = left + scroll.left;
+	if(checkSuspended(scroll, pos, element.offsetWidth))
+		return;
+
+	const width = scroll.parent.clientWidth;
+	// Trigger margin (tolerance before a rule counts as violated) and placement margin (breathing space that a
+	// scroll leaves to the viewport edges); the difference provides hysteresis against pixel-rounding loops.
+	const margin = 12;
+	const trigger = 4;
+	// Where a scroll lands the current position, as a fraction of the viewport from the left edge
+	const landing = 0.12;
+	// Judge against the target of a running animation of ours, so that it is not needlessly restarted
+	const scrollLeft = scroll.scrollTarget ?? scroll.parent.scrollLeft;
+	const block = context.block;
+
+	// While a repeated block that fits the viewport is playing (and will jump back to its start again), keep
+	// the whole block in view — then the repetitions need no scrolling at all.
+	if(block && !block.final && block.end - block.start <= width - 2 * margin) {
+		if(block.start < scrollLeft + trigger || block.end > scrollLeft + width - trigger) {
+			// Scroll the minimal distance that fits the whole block (with the placement margin)
+			const target = block.start < scrollLeft + trigger
+				? block.start - margin
+				: block.end + margin - width;
+			scrollTo(scroll, target, target < scrollLeft ? "glide" : "smooth");
+		}
+		return;
+	}
+
+	// How far behind the position the view should reach: the desired read-ahead. On narrow viewports where the
+	// full read-ahead would make every page turn a tiny step (continuous creeping), it is trimmed so that each
+	// turn buys a calm period of at least 2 beats or 40% of the viewport — briefly showing less ahead right
+	// before a turn reads better than a constantly moving view.
+	const ahead = context.aheadWidth ?? width * 0.35;
+	const step = Math.max(ahead * 2 / 3, width * 0.4);
+	let reqEnd = pos + Math.min(ahead, Math.max(width - trigger - width * landing - step, width * 0.25));
+	// ... but not beyond the end of a block that is about to jump back to its start (what comes next is the
+	// block start, not what is printed after the block — so no page turn right before the jump)
+	if(block && !block.final)
+		reqEnd = Math.min(reqEnd, block.end);
+
+	if(pos < scrollLeft) {
+		// The position jumped backwards (e.g. a repeated block starting over): glide back, landing the position
+		// at the usual reading position — or at the very start when the jump goes near it, so that the
+		// beginning of the content (e.g. the instrument names) is shown. The latter only if the view can then
+		// stay calm for a while (the read-ahead plus half a page-turn step), so that the glide to the start is
+		// not immediately interrupted by a page turn.
+		const target = pos - width * landing;
+		scrollTo(scroll, target < width / 2 && reqEnd + step / 2 <= width - trigger ? 0 : target, "glide");
+	} else if(reqEnd > scrollLeft + width - trigger) {
+		// Less than the desired read-ahead (or not even the position itself) is visible: turn the page, landing
+		// the position near the left edge — one big step, so that the view then stays calm for a while. If the
+		// required read-ahead is even wider than that, keeping the position visible wins.
+		scrollTo(scroll, Math.min(Math.max(pos - width * landing, reqEnd + margin - width), pos - margin), "smooth");
+	}
 }
 
 export function makeAbsoluteUrl(url: string): string {

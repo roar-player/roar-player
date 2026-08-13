@@ -79,7 +79,7 @@
 		appendSongPart(song, allInstruments([ tuneName, patternName]), state.value);
 
 		await nextTick();
-		scrollToElement(containerRef.value!.querySelector(".bb-song-player .song-container")!, false, true);
+		scrollToElement(containerRef.value!.querySelector(".bb-song-player .song-container")!, true);
 	};
 </script>
 

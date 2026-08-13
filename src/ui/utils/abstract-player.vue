@@ -3,7 +3,7 @@
 	import { computed, onBeforeUnmount, ref, watch, watchSyncEffect } from 'vue';
 	import config from '../../config';
 	import { BeatboxReference, createBeatbox, getPlayerById, RawPatternWithUpbeat } from '../../services/player';
-	import { scrollToElement } from '../../services/utils';
+	import { followPlayback, type FollowPlaybackContext } from '../../services/utils';
 	import { PlaybackSettings } from '../../state/playbackSettings';
 
 	export interface PositionData<Optional extends boolean = true> {
@@ -17,6 +17,9 @@
 		rawPattern: RawPatternWithUpbeat;
 		playbackSettings: PlaybackSettings;
 		getLeft: (data: PositionData<false>) => number;
+		/** Provides the playback context (read-ahead width, current repeated block) for the scrolling that
+		 * follows the position marker; without it, a generic read-ahead of 35% of the viewport is used. */
+		getScrollContext?: (data: PositionData<false>) => FollowPlaybackContext;
 	}>();
 
 	const emit = defineEmits<{
@@ -52,8 +55,7 @@
 			}
 			markerLeft = newLeft;
 			if (scroll) {
-				// The marker is positioned through a transform, so its position needs to be passed explicitly
-				scrollToElement(marker, true, force, newLeft);
+				followPlayback(marker, newLeft, props.getScrollContext?.({ position, beat, player }), force);
 			}
 		}
 	};
