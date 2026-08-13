@@ -36,11 +36,12 @@ export function getInstrumentsLabel(instruments: Instrument[]): string {
 }
 
 /**
- * The parenthesized volume annotation of a segment, e.g. “(soft to loud)”. If the annotation does not apply
- * to all instruments sounding within the annotated bars, they are named, e.g. “(Snare: soft to loud)” — or,
- * when that is the majority of those instruments, the others are, e.g. “(All but Repi: soft)”.
+ * The volume annotation of a segment, e.g. “soft to loud”. If the annotation does not apply to all
+ * instruments sounding within the annotated bars, they are named, e.g. “Snare: soft to loud” — or, when
+ * that is the majority of those instruments, the others are, e.g. “All but Repi: soft”. Next to a repeat
+ * count the annotation is parenthesized (`parenthesized`), e.g. “3× (soft to loud)”.
  */
-export function getAnnotationText(segment: CondensedSegment): string | undefined {
+export function getAnnotationText(segment: CondensedSegment, parenthesized: boolean): string | undefined {
 	const i18n = getI18n();
 	const annotation = segment.dynamics ?? segment.volume;
 	if (!annotation) {
@@ -55,15 +56,28 @@ export function getAnnotationText(segment: CondensedSegment): string | undefined
 			: getInstrumentsLabel(affected);
 		text = `${names}: ${text}`;
 	}
-	return `(${text})`;
+	return parenthesized ? `(${text})` : text;
 }
 
 /**
- * The glyph of the tempo marks at a bar line: “♩+” for a speed-up, “♩−” for a slow-down. Several marks at the
- * same bar (e.g. a step into a block plus an accelerando over its repetitions) share one glyph.
+ * The label of the tempo marks at a bar line: “speed up”/“slow down” for a step change, with the
+ * per-repetition info in parentheses — “speed up (at each repetition)” for an accelerando over the
+ * repetitions of a block, or “speed up (here and at each repetition)” when a step into the block combines
+ * with it. A step and a per-repetition mark in opposite directions (rare) are listed separately.
  */
-export function getTempoMarkGlyph(marks: CondensedTempoMark[]): string {
-	return marks[marks.length - 1].step < 0 ? "♩−" : "♩+";
+export function getTempoMarkLabel(marks: CondensedTempoMark[]): string {
+	const i18n = getI18n();
+	const direction = (mark: CondensedTempoMark) => (mark.step < 0 ? "down" : "up");
+	const stepMark = marks.find((mark) => mark.iterations == null);
+	const eachMark = marks.find((mark) => mark.iterations != null);
+	if (stepMark && eachMark) {
+		if (direction(stepMark) === direction(eachMark)) {
+			return i18n.t(`condensed.tempo-${direction(stepMark)}-here-and-each`);
+		}
+		return `${i18n.t(`condensed.tempo-${direction(stepMark)}`)}, ${i18n.t(`condensed.tempo-${direction(eachMark)}-each`)}`;
+	}
+	const mark = (eachMark ?? stepMark)!;
+	return i18n.t(`condensed.tempo-${direction(mark)}${eachMark ? "-each" : ""}`);
 }
 
 /** Formats a bpm delta with an explicit sign, e.g. “+10” or “−10”. */
@@ -72,13 +86,11 @@ function formatBpmDelta(bpm: number): string {
 }
 
 /**
- * The tooltip of the tempo marks at a bar line, naming the exact bpm deltas (which are not printed on the
- * sheets — the actual speed is not fixed, everything scales with the playback speed).
+ * The tooltip of the tempo marks at a bar line, naming the exact bpm deltas, e.g. “♩+10bpm” (which are not
+ * printed on the sheets — the actual speed is not fixed, everything scales with the playback speed). The
+ * context (from here / at each repetition) is carried by the visible label (see getTempoMarkLabel).
  */
 export function getTempoMarkTooltip(marks: CondensedTempoMark[]): string {
 	const i18n = getI18n();
-	return marks.map((mark) => i18n.t(
-		mark.iterations != null ? "condensed.tempo-each" : "condensed.tempo-step",
-		{ bpm: formatBpmDelta(mark.step) }
-	)).join("\n");
+	return marks.map((mark) => i18n.t("condensed.tempo-bpm", { bpm: formatBpmDelta(mark.step) })).join("\n");
 }

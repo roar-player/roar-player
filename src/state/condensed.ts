@@ -11,8 +11,8 @@ import { InstrumentVolumeHack, Pattern } from "./pattern";
  * - Bars that are repeated are rendered only once with a repeat count (“×4”).
  * - Volume changes (specified through the volume hack) are preserved as textual annotations above the bars
  *   where they happen: ramps as “soft to loud”/“loud to soft”, constant sections as “soft”/“loud”.
- * - Tempo changes (specified through the speed hack) become marks (“♩+”/“♩−”) at the bar lines where they
- *   happen. A repetition never extends across a tempo change — except when the speed steps up/down uniformly
+ * - Tempo changes (specified through the speed hack) become marks (“speed up”/“slow down”) at the bar lines
+ *   where they happen. A repetition never extends across a tempo change — except when the speed steps up/down uniformly
  *   once per iteration, which stays condensed and is annotated on the block as a whole (accelerando over the
  *   repetitions).
  */
@@ -81,15 +81,15 @@ export type CondensedSegment = {
 };
 
 /**
- * A tempo change (through the speed hack) as rendered in the condensed representation: a “♩+”/“♩−” mark at the
- * bar line of a bar.
+ * A tempo change (through the speed hack) as rendered in the condensed representation: a “speed up”/“slow down”
+ * mark at the bar line of a bar.
  */
 export type CondensedTempoMark = {
 	/** The bar (bar 0 is the first bar after the upbeat) at whose bar line the mark is rendered. */
 	bar: number;
 	/**
 	 * The bpm change happening at this mark, relative to the previously prevailing speed. The sign determines
-	 * the direction of the mark (♩+ or ♩−). For per-iteration marks, the change of a single step.
+	 * the direction of the mark (speed up or slow down). For per-iteration marks, the change of a single step.
 	 */
 	step: number;
 	/**

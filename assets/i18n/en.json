@@ -189,8 +189,13 @@
 		"soft": "soft",
 		"loud": "loud",
 		"all-but": "All but {{instruments}}",
-		"tempo-step": "{{bpm}} bpm from here",
-		"tempo-each": "{{bpm}} bpm at each repetition"
+		"tempo-up": "speed up",
+		"tempo-down": "slow down",
+		"tempo-up-each": "speed up (at each repetition)",
+		"tempo-down-each": "slow down (at each repetition)",
+		"tempo-up-here-and-each": "speed up (here and at each repetition)",
+		"tempo-down-here-and-each": "slow down (here and at each repetition)",
+		"tempo-bpm": "♩{{bpm}}bpm"
 	},
 	"sheet": {
 		"speed": "{{bpm}} bpm",

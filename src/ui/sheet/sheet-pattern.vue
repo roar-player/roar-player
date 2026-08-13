@@ -15,7 +15,7 @@
 	import config from "../../config";
 	import { Pattern } from "../../state/pattern";
 	import { getCondensedPattern, CondensedRow, CondensedTempoMark } from "../../state/condensed";
-	import { getAnnotationText, getInstrumentsLabel, getTempoMarkGlyph, getTempoMarkTooltip } from "../utils/condensed-annotations";
+	import { getAnnotationText, getInstrumentsLabel, getTempoMarkLabel, getTempoMarkTooltip } from "../utils/condensed-annotations";
 	import { computed } from "vue";
 	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
 
@@ -88,7 +88,7 @@
 		return groups.map((group) => {
 			const segment = sheet.value.segments[group.bars[0].segmentIdx];
 			const startsSegment = group.bars[0].barIdx === segment.startBar;
-			const annotationText = startsSegment ? getAnnotationText(segment) : undefined;
+			const annotationText = startsSegment ? getAnnotationText(segment, group.bars[0].repeatCount != null) : undefined;
 			const hasIndicator = group.bars[0].hasIndicator;
 			return {
 				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
@@ -102,7 +102,7 @@
 		});
 	};
 
-	/** The tempo marks (♩+/♩− at bar lines, through the speed hack) by the bar they are rendered at. */
+	/** The tempo marks (“speed up”/“slow down” at bar lines, through the speed hack) by the bar they are rendered at. */
 	const tempoMarksByBar = computed(() => {
 		const ret = new Map<number, CondensedTempoMark[]>();
 		for (const mark of sheet.value.tempoMarks) {
@@ -254,7 +254,7 @@
 				<tr v-if="line.some((bar) => tempoMarksByBar.has(bar.barIdx))">
 					<th class="row-label"></th>
 					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
-					<td v-for="bar in line" :key="bar.barIdx" :colspan="bar.beats * sheet.time" class="tempo-mark-cell" :class="{ 'has-mark': tempoMarksByBar.has(bar.barIdx) }"><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" :title="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkGlyph(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
+					<td v-for="bar in line" :key="bar.barIdx" :colspan="bar.beats * sheet.time" class="tempo-mark-cell" :class="{ 'has-mark': tempoMarksByBar.has(bar.barIdx) }"><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" :title="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkLabel(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
 				</tr>
 				<tr v-if="line.some((bar) => bar.hasIndicator)">
 					<th class="row-label"></th>

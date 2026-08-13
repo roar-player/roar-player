@@ -18,7 +18,7 @@
 	import { BeatboxReference, createBeatbox, patternToBeatbox, rawPatternPlaybackSettings } from "../../services/player";
 	import { patternEquals, PatternSegment, setSegmentRepeatCount, updateStrokeMirrored } from "../../state/pattern";
 	import { CondensedTempoMark, getCondensedPattern } from "../../state/condensed";
-	import { getAnnotationText, getTempoMarkGlyph, getTempoMarkTooltip } from "../utils/condensed-annotations";
+	import { getAnnotationText, getTempoMarkLabel, getTempoMarkTooltip } from "../utils/condensed-annotations";
 	import { normalizePlaybackSettings, PlaybackSettings, updatePlaybackSettings } from "../../state/playbackSettings";
 	import { createPattern, getPatternFromState } from "../../state/state";
 	import { clone } from "../../utils";
@@ -135,7 +135,7 @@
 	/** The cells of the indicator row above the beat numbers: one per segment, carrying repeat count and/or volume annotation. */
 	const indicatorCells = computed(() => renderedPattern.value.segments.map((segment, segmentIdx) => {
 		const isRepeat = segment.repeat > 1 || !!segment.open;
-		const annotationText = getAnnotationText(segment);
+		const annotationText = getAnnotationText(segment, isRepeat);
 		return {
 			segmentIdx,
 			segment,
@@ -150,7 +150,7 @@
 
 	const hasIndicatorRow = computed(() => indicatorCells.value.some((cell) => cell.hasIndicator));
 
-	/** The tempo marks (♩+/♩− at bar lines, through the speed hack) by the bar they are rendered at. */
+	/** The tempo marks (“speed up”/“slow down” at bar lines, through the speed hack) by the bar they are rendered at. */
 	const tempoMarksByBar = computed(() => {
 		const ret = new Map<number, CondensedTempoMark[]>();
 		for (const mark of renderedPattern.value.tempoMarks) {
@@ -536,7 +536,7 @@
 							:colspan="bar.beats * pattern.time"
 							class="tempo-mark-cell"
 							:class="{ 'has-mark': tempoMarksByBar.has(bar.barIdx) }"
-						><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" v-tooltip="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkGlyph(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
+						><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" v-tooltip="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkLabel(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
 					</tr>
 					<tr v-if="hasIndicatorRow" class="indicator-row">
 						<td colspan="2"></td>
