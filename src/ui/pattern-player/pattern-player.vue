@@ -706,9 +706,11 @@
 				overflow: visible;
 
 				// The bar line is extended up through the tempo row at the marked bar, so that the mark
-				// visually sits on the bar line where the tempo changes
+				// visually sits on the bar line where the tempo changes. Like the repeat-start line of the
+				// indicator row, it is drawn as a box shadow reaching into the preceding cell, so that it
+				// aligns with the bar line below (the border-right of the previous bar's last stroke).
 				&.has-mark {
-					border-left: 2px solid #888;
+					box-shadow: -2px 0 0 #888;
 				}
 			}
 
