@@ -35,9 +35,20 @@
 		const beat = position != null ? (position - player._upbeat)/config.playTime : undefined;
 		emit("position", { position, beat, player });
 		if (position != null && beat != null) {
-			positionMarkerRef.value!.style.left = `${props.getLeft({ position, beat, player })}px`;
+			const marker = positionMarkerRef.value!;
+			const newLeft = props.getLeft({ position, beat, player });
+			if (newLeft < parseFloat(marker.style.left || "0")) {
+				// Jump backwards (e.g. a repeated block starting over) instantly — animating it would show
+				// the marker streaking leftwards across the pattern
+				marker.style.transition = "none";
+				marker.style.left = `${newLeft}px`;
+				void marker.offsetLeft; // Flush, so that the transition is not applied to this change
+				marker.style.transition = "";
+			} else {
+				marker.style.left = `${newLeft}px`;
+			}
 			if (scroll) {
-				scrollToElement(positionMarkerRef.value!, true, force);
+				scrollToElement(marker, true, force);
 			}
 		}
 	};

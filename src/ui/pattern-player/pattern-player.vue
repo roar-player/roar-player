@@ -627,9 +627,12 @@
 					background-color: #ececec;
 				}
 
-				// The bar lines are extended up through the indicator row where a block starts/ends
+				// The bar lines are extended up through the indicator row where a block starts/ends. The start
+				// line is drawn as a box shadow reaching into the preceding cell, so that it aligns with the
+				// bar line below (the border-right of the bar's last stroke) instead of shifting the block's
+				// first column by the border width (the table uses the separate border model).
 				&.repeat-start {
-					border-left: 2px solid #888;
+					box-shadow: -2px 0 0 #888;
 				}
 
 				&.repeat-end {

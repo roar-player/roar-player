@@ -9,6 +9,8 @@ declare global {
 			scrollingDisabled: boolean;
 			/** The scrollLeft that our own smooth scroll is currently animating towards, if any. */
 			scrollTarget?: number;
+			/** When the current scrollTarget was set, used to expire animations that were silently interrupted. */
+			scrollTargetTime?: number;
 			lastScrollLeft: number;
 		}
 	}
@@ -55,10 +57,17 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 	if(force)
 		element._bbScroll.scrollingDisabled = false;
 
-	const fac1 = (scrollFurther ? 0.5 : 0);
+	if(element._bbScroll.scrollTarget != null && Date.now() - (element._bbScroll.scrollTargetTime ?? 0) > 1000) {
+		// Our smooth scroll should long have arrived at its target, so it was probably interrupted without us
+		// noticing (e.g. by a touch gesture in the same direction, which the scroll listener cannot tell apart
+		// from the animation itself). Judging the position against the stale target would block any follow-up.
+		element._bbScroll.scrollTarget = undefined;
+	}
+
+	const fac1 = (scrollFurther ? 0.1 : 0);
 	const fac2 = (scrollFurther ? 0.9 : 0);
 
-	const scrollTo = (target: number) => {
+	const scrollTo = (target: number, smooth: boolean) => {
 		const scroll = element._bbScroll!;
 		const clamped = Math.max(0, Math.min(Math.round(target), scroll.parent.scrollWidth - scroll.parent.clientWidth));
 		if(clamped == scroll.parent.scrollLeft) {
@@ -66,7 +75,8 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 			scroll.scrollTarget = undefined;
 		} else if(clamped != scroll.scrollTarget) {
 			scroll.scrollTarget = clamped;
-			scroll.parent.scroll({ left: clamped, behavior: 'smooth' });
+			scroll.scrollTargetTime = Date.now();
+			scroll.parent.scroll({ left: clamped, behavior: smooth ? 'smooth' : 'auto' });
 		}
 	};
 
@@ -79,11 +89,13 @@ export function scrollToElement(element: HTMLElement, scrollFurther: boolean = f
 		// the left edge; otherwise aligned with the right edge)
 		const target = left + element.offsetWidth - element._bbScroll.parent.offsetWidth * (1-fac2);
 		if(left + element.offsetWidth > scrollLeft + element._bbScroll.parent.offsetWidth * (1-fac1))
-			scrollTo(target);
+			scrollTo(target, true);
 		else if(left < scrollLeft)
-			// When the element jumped backwards, scroll back to the same reading position as when scrolling
-			// forward: anything else would immediately trigger a forward scroll again as the element moves on.
-			scrollTo(scrollFurther ? target : left);
+			// When the element jumped backwards during playback (scrollFurther), snap back instantly to the
+			// same reading position as when scrolling forward: a smooth animation would leave the element out
+			// of sight while it is running, and any other position would immediately trigger a forward scroll
+			// again as the element moves on.
+			scrollTo(scrollFurther ? target : left, !scrollFurther);
 	} else if(left >= element._bbScroll.parent.scrollLeft && left + element.offsetWidth <= element._bbScroll.parent.scrollLeft + element._bbScroll.parent.offsetWidth)
 		element._bbScroll.scrollingDisabled = false;
 }
