@@ -521,6 +521,29 @@ describe("getCondensedPattern", () => {
 		]);
 	});
 
+	test("does not extend a stepped fade across the full normal-volume sections around it", () => {
+		// Like the Afro Call: a stepped fade up to the normal volume, embedded in longer normal-volume
+		// sections — the fade span covers the bar where it reaches the normal volume, but not the bars
+		// beyond (they play at the normal volume and must not be annotated)
+		const pattern = makePattern({
+			length: 32,
+			ls: "X   X   X   X   ".repeat(2) + "X X X X X X X X ".repeat(4) + "X   X   X   X   " + "X  X X  X X  X  ",
+			volumeHack: { 32: 0.2, 48: 0.4, 64: 0.7, 80: 1 }
+		});
+
+		expect(getCondensedPattern(pattern).segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 2 },
+			{ startBar: 2, bars: 1, repeat: 4, dynamics: "crescendo" },
+			{ startBar: 6, bars: 2, repeat: 1 }
+		]);
+
+		expect(getCondensedPattern(pattern, { condense: false }).segments).toEqual([
+			{ startBar: 0, bars: 2, repeat: 1 },
+			{ startBar: 2, bars: 4, repeat: 1, dynamics: "crescendo" },
+			{ startBar: 6, bars: 2, repeat: 1 }
+		]);
+	});
+
 	test("emits a tempo mark at the bar of a speed change", () => {
 		const sheet = getCondensedPattern(makePattern({
 			length: 8,

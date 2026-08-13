@@ -439,7 +439,12 @@ function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, t
 				}
 			}
 			if (j - i >= 2) {
-				spans.push({ start: run[i].start, end: run[j].end, label: dir === "up" ? "crescendo" : "decrescendo" });
+				// A fade that departs from (or arrives at) the normal volume only covers the directly
+				// adjacent bar of the normal-volume section — not the section's full extent, which can
+				// reach far beyond the fade
+				const start = run[i].level === "normal" ? run[i].end - 1 : run[i].start;
+				const end = run[j].level === "normal" ? run[j].start + 1 : run[j].end;
+				spans.push({ start, end, label: dir === "up" ? "crescendo" : "decrescendo" });
 				lastDeviatingRows = undefined;
 				i = j + 1;
 			} else {
