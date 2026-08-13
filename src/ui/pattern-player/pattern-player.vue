@@ -699,7 +699,6 @@
 
 			thead td.tempo-mark-cell {
 				font-size: 0.85em;
-				font-weight: bold;
 				text-align: left;
 				white-space: nowrap;
 				padding: 0 0.5ex 0.25ex;

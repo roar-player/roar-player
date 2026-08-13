@@ -503,6 +503,24 @@ describe("getCondensedPattern", () => {
 		]);
 	});
 
+	test("annotates a stepped fade as one crescendo in the uncondensed view, matching the condensed block", () => {
+		// A bar repeated at stepped volumes, ending at the normal volume: the condensed block is annotated
+		// “soft to loud”, so the uncondensed view must not label the same bars as a constant “soft”
+		const pattern = makePattern({
+			length: 12,
+			ls: "X   X   X   X   ".repeat(3),
+			volumeHack: { 0: 0.33, 16: 0.66, 32: 1 }
+		});
+
+		expect(getCondensedPattern(pattern).segments).toEqual([
+			{ startBar: 0, bars: 1, repeat: 3, dynamics: "crescendo" }
+		]);
+
+		expect(getCondensedPattern(pattern, { condense: false }).segments).toEqual([
+			{ startBar: 0, bars: 3, repeat: 1, dynamics: "crescendo" }
+		]);
+	});
+
 	test("emits a tempo mark at the bar of a speed change", () => {
 		const sheet = getCondensedPattern(makePattern({
 			length: 8,

@@ -352,7 +352,6 @@
 
 			td.tempo-mark-cell {
 				font-size: 8pt;
-				font-weight: bold;
 				text-align: left;
 				padding-left: 1mm;
 				height: 4.8mm;

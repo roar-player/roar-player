@@ -352,6 +352,9 @@ function soundsWithin(row: RawRow, from: number, to: number): boolean {
  * indicated textually above the bars: maximal runs of bars across which the volumes ramp monotonically become
  * crescendo/decrescendo spans, and maximal runs of bars with constant volumes become soft/loud spans (if at
  * least one row is softer/louder than the normal volume 1 and none deviates in the other direction).
+ * Constant sections connected by at least two volume steps in the same direction form a stepped fade and
+ * become a single crescendo/decrescendo span as well — matching the annotation that the same volumes get
+ * when they ramp across the iterations of a condensed repeated block (see getRepeatDynamics).
  */
 function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, totalBars: number): VolumeSpan[] {
 	// A row whose volume never changes plays at a constant offset (e.g. an instrument that is just a bit
@@ -384,9 +387,13 @@ function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, t
 	// The volume step between the last stroke of the previous bar and the first stroke of this bar
 	const stepBefore = (bar: number) => getDirection(barStart(bar), barStart(bar) + 1);
 
-	const getLevel = (bar: number): CondensedSegment["volume"] => {
+	// The volume level at the start of the given (constant) bar: “normal” if all rows play at the normal
+	// volume 1, undefined if some rows are softer and others louder (which gets no annotation)
+	const getLevel = (bar: number): "soft" | "loud" | "normal" | undefined => {
 		const volumes = rows.map((row) => row.volumes[barStart(bar)]);
-		if (volumes.some((volume) => volume < 1 - VOLUME_EPSILON) && volumes.every((volume) => volume <= 1 + VOLUME_EPSILON)) {
+		if (volumes.every((volume) => Math.abs(volume - 1) <= VOLUME_EPSILON)) {
+			return "normal";
+		} else if (volumes.some((volume) => volume < 1 - VOLUME_EPSILON) && volumes.every((volume) => volume <= 1 + VOLUME_EPSILON)) {
 			return "soft";
 		} else if (volumes.some((volume) => volume > 1 + VOLUME_EPSILON) && volumes.every((volume) => volume >= 1 - VOLUME_EPSILON)) {
 			return "loud";
@@ -400,14 +407,68 @@ function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, t
 	const getDeviatingRows = (bar: number) =>
 		rows.map((row, index) => (Math.abs(row.volumes[barStart(bar)] - 1) > VOLUME_EPSILON ? index : -1)).filter((index) => index >= 0).join(",");
 
+	/** A constant section within a run of adjacent constant sections (which are separated by volume steps). */
+	type ConstantSection = {
+		start: number;
+		end: number;
+		level: ReturnType<typeof getLevel>;
+		deviatingRows: string;
+		/** The direction of the volume step between the previous section of the run and this one. */
+		stepDir?: "up" | "down" | "mixed";
+	};
+
 	const spans: VolumeSpan[] = [];
 	let lastDeviatingRows: string | undefined;
+
+	/**
+	 * Emits the spans of a run of adjacent constant sections: sections connected by at least two volume steps
+	 * in the same direction form a stepped fade and become a single crescendo/decrescendo span; the remaining
+	 * sections become soft/loud spans, with adjacent same-label sections that affect the same rows (e.g. a
+	 * soft section that steps up and back down) merged into one span.
+	 */
+	const flushRun = (run: ConstantSection[]) => {
+		let i = 0;
+		while (i < run.length) {
+			// The longest stepped fade starting at this section: consecutive sections (of unambiguous
+			// levels) whose connecting steps all go the same direction
+			const dir = run[i + 1]?.stepDir;
+			let j = i;
+			if ((dir === "up" || dir === "down") && run[i].level) {
+				while (j + 1 < run.length && run[j + 1].stepDir === dir && run[j + 1].level) {
+					j++;
+				}
+			}
+			if (j - i >= 2) {
+				spans.push({ start: run[i].start, end: run[j].end, label: dir === "up" ? "crescendo" : "decrescendo" });
+				lastDeviatingRows = undefined;
+				i = j + 1;
+			} else {
+				const section = run[i];
+				if (section.level === "soft" || section.level === "loud") {
+					const last = spans[spans.length - 1];
+					if (last?.end === section.start && last.label === section.level && lastDeviatingRows === section.deviatingRows) {
+						last.end = section.end;
+					} else {
+						spans.push({ start: section.start, end: section.end, label: section.level });
+						lastDeviatingRows = section.deviatingRows;
+					}
+				}
+				i++;
+			}
+		}
+	};
+
+	let run: ConstantSection[] = [];
 	let bar = 0;
 	while (bar < totalBars) {
 		const direction = withinBar(bar);
 		if (direction === "mixed") {
+			flushRun(run);
+			run = [];
 			bar++;
 		} else if (direction) {
+			flushRun(run);
+			run = [];
 			// A ramp: extend it across adjacent bars that keep ramping in the same direction
 			let end = bar + 1;
 			while (end < totalBars && withinBar(end) === direction && (stepBefore(end) ?? direction) === direction) {
@@ -422,20 +483,11 @@ function getVolumeSpans(allRows: RawRow[], upbeat: number, barStrokes: number, t
 			while (end < totalBars && !withinBar(end) && !stepBefore(end)) {
 				end++;
 			}
-			const label = getLevel(bar);
-			const deviatingRows = getDeviatingRows(bar);
-			const last = spans[spans.length - 1];
-			if (label && last?.end === bar && last.label === label && lastDeviatingRows === deviatingRows) {
-				// Adjacent constant sections with the same label that affect the same rows (e.g. a stepped
-				// fade through several soft volumes) are annotated as one span
-				last.end = end;
-			} else if (label) {
-				spans.push({ start: bar, end, label });
-				lastDeviatingRows = deviatingRows;
-			}
+			run.push({ start: bar, end, level: getLevel(bar), deviatingRows: getDeviatingRows(bar), stepDir: run.length ? stepBefore(bar) : undefined });
 			bar = end;
 		}
 	}
+	flushRun(run);
 
 	// Determine which instruments each span applies to: the rows that actually ramp within a
 	// crescendo/decrescendo span, or that are softer/louder than the normal volume within a soft/loud span.
@@ -523,12 +575,18 @@ function applyVolumeAnnotations(segments: CondensedSegment[], spans: VolumeSpan[
 			const span = spans.find((candidate) => candidate.start <= bar && bar < candidate.end);
 			if (span) {
 				const end = Math.min(span.end, segmentEnd);
+				// A stepped fade that started inside the preceding repeated block already carries its
+				// annotation there (as the dynamics of the block), so its continuation is not re-annotated
+				const prev = ret[ret.length - 1];
+				const continuesAnnotated = (span.label === "crescendo" || span.label === "decrescendo") &&
+					span.start < bar && prev != null && prev.dynamics === span.label && prev.startBar + prev.bars * prev.repeat === bar;
 				ret.push({
 					startBar: bar,
 					bars: end - bar,
 					repeat: 1,
-					...(span.label === "crescendo" || span.label === "decrescendo" ? { dynamics: span.label } : { volume: span.label }),
-					...(span.instruments ? { annotationInstruments: span.instruments, annotationAllInstruments: span.allInstruments } : {})
+					...(continuesAnnotated ? {} :
+						span.label === "crescendo" || span.label === "decrescendo" ? { dynamics: span.label } : { volume: span.label }),
+					...(!continuesAnnotated && span.instruments ? { annotationInstruments: span.instruments, annotationAllInstruments: span.allInstruments } : {})
 				});
 				bar = end;
 			} else {
