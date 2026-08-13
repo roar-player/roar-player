@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getPatternFromState } from "../../state/state";
-	import { createBeatbox, songToBeatbox } from "../../services/player";
+	import { createBeatbox, rawPatternPlaybackSettings, songToBeatbox } from "../../services/player";
 	import config, { Instrument } from "../../config";
 	import { normalizePlaybackSettings } from "../../state/playbackSettings";
 	import { deleteSongPart, getEffectiveSongLength, PatternReference, setSongPart } from "../../state/song";
@@ -55,7 +55,9 @@
 
 	const song = computed(() => state.value.songs[songIdx.value]);
 
-	const rawPattern = computed(() => songToBeatbox(song.value ?? {}, state.value, state.value.playbackSettings));
+	const rawPatternSettings = rawPatternPlaybackSettings(() => state.value.playbackSettings);
+
+	const rawPattern = computed(() => songToBeatbox(song.value ?? {}, state.value, rawPatternSettings.value));
 
 	const handlePosition = ({ beat }: PositionData) => {
 		if(beat == null) {

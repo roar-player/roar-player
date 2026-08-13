@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createPattern, getPatternFromState } from "../state/state";
-	import { patternToBeatbox, RawPatternWithUpbeat, stopAllPlayers } from "../services/player";
+	import { patternToBeatbox, rawPatternPlaybackSettings, RawPatternWithUpbeat, stopAllPlayers } from "../services/player";
 	import { normalizePlaybackSettings, PlaybackSettings } from "../state/playbackSettings";
 	import config from "../config";
 	import defaultTunes from "../defaultTunes";
@@ -81,14 +81,16 @@
 		loop: pattern.value?.loop || playbackSettings.value.loop
 	}));
 
+	const rawPatternSettings = rawPatternPlaybackSettings(() => playerPlaybackSettings.value);
+
 	const rawPattern = computed<RawPatternWithUpbeat>(() => {
 		if (!pattern.value) {
 			return Object.assign([], { upbeat: 0 });
 		}
 
-		const result = patternToBeatbox(pattern.value ?? {}, playerPlaybackSettings.value);
-		if (playerPlaybackSettings.value.length) {
-			return Object.assign(result.slice(0, playerPlaybackSettings.value.length * config.playTime + pattern.value.upbeat), { upbeat: result.upbeat });
+		const result = patternToBeatbox(pattern.value ?? {}, rawPatternSettings.value);
+		if (rawPatternSettings.value.length) {
+			return Object.assign(result.slice(0, rawPatternSettings.value.length * config.playTime + pattern.value.upbeat), { upbeat: result.upbeat });
 		} else {
 			return result;
 		}

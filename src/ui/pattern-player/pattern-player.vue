@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 	import config, { Instrument } from "../../config";
-	import { BeatboxReference, createBeatbox, patternToBeatbox } from "../../services/player";
+	import { BeatboxReference, createBeatbox, patternToBeatbox, rawPatternPlaybackSettings } from "../../services/player";
 	import { patternEquals, PatternSegment, setSegmentRepeatCount, updateStrokeMirrored } from "../../state/pattern";
 	import { getCondensedPattern } from "../../state/condensed";
 	import { getAnnotationText } from "../utils/condensed-annotations";
@@ -218,7 +218,9 @@
 		}
 	}, { deep: true });
 
-	const rawPattern = computed(() => patternToBeatbox(pattern.value, playbackSettings.value));
+	const rawPatternSettings = rawPatternPlaybackSettings(() => playbackSettings.value);
+
+	const rawPattern = computed(() => patternToBeatbox(pattern.value, rawPatternSettings.value));
 
 	/** The index of the beat cell currently highlighted as active, so that the highlight (and the DOM queries
 	 * involved) is only touched when the beat changes, not on every frame of the playback position updates. */

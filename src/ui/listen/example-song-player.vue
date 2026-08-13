@@ -9,7 +9,7 @@
 <script lang="ts" setup>
 	import { computed, ref } from "vue";
 	import { getPatternFromState } from "../../state/state";
-	import { songToBeatbox, stopAllPlayers } from "../../services/player";
+	import { rawPatternPlaybackSettings, songToBeatbox, stopAllPlayers } from "../../services/player";
 	import { PlaybackSettings } from "../../state/playbackSettings";
 	import config from "../../config";
 	import { allInstruments, getEffectiveSongLength, SongParts } from "../../state/song";
@@ -65,7 +65,9 @@
 		return result;
 	});
 
-	const rawPattern = computed(() => songToBeatbox(songParts.value, state.value, playbackSettings.value));
+	const rawPatternSettings = rawPatternPlaybackSettings(() => playbackSettings.value);
+
+	const rawPattern = computed(() => songToBeatbox(songParts.value, state.value, rawPatternSettings.value));
 
 	const playPause = () => {
 		const p = getOrCreatePlayer();

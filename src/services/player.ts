@@ -7,7 +7,9 @@ import { normalizePattern, Pattern } from "../state/pattern";
 import { getPatternFromState, State } from "../state/state";
 import { getEffectiveSongLength, SongParts } from "../state/song";
 import { decode } from "base64-arraybuffer";
-import { reactive } from "vue";
+import { computed, ComputedRef, reactive } from "vue";
+import { isEqual } from "lodash-es";
+import { clone } from "../utils";
 
 export interface BeatboxReference {
 	id: number;
@@ -82,6 +84,24 @@ function isEnabled(instr: Instrument, headphones: Headphones, mute: Mute) {
 		return headphones.includes(instr);
 
 	return true;
+}
+
+/**
+ * The playback settings that influence the result of patternToBeatbox()/songToBeatbox(), as a stable value:
+ * the same object keeps being returned until one of them changes, so that computeds deriving raw patterns from
+ * it are not re-evaluated (Vue skips dependents when a computed returns an identical value). In particular the
+ * speed is not part of the raw patterns (it is applied through Beatbox.setBeatLength() instead) — so dragging
+ * the speed slider does not rebuild the raw pattern of every player on the page on every input event.
+ */
+export function rawPatternPlaybackSettings(getSettings: () => PlaybackSettings): ComputedRef<PlaybackSettings> {
+	let last: PlaybackSettings | undefined;
+	return computed(() => {
+		const settings = getSettings();
+		if (!last || !isEqual({ ...last, speed: settings.speed }, settings)) {
+			last = clone(settings);
+		}
+		return last;
+	});
 }
 
 export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSettings): RawPatternWithUpbeat {
