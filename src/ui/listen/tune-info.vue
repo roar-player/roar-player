@@ -138,6 +138,10 @@
 			margin-bottom: .5em;
 		}
 
+		table {
+			display: inline-table;
+		}
+
 		.bb-tune-info-video {
 			width: 100%;
 			padding-top: 56.25%;
