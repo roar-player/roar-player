@@ -96,7 +96,7 @@
 		<div v-if="tune.video">
 			<h2>{{i18n.t("tune-info.video")}}</h2>
 			<div class="bb-tune-info-video">
-				<iframe sandbox="allow-same-origin allow-scripts" :src="tune.video" frameborder="0" allowfullscreen></iframe>
+				<iframe allow="autoplay; fullscreen" :src="tune.video" frameborder="0" allowfullscreen></iframe>
 			</div>
 		</div>
 
