@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { getSortedTuneList, State } from "../state/state";
 	import { tuneIsInCategory } from "../state/tune";
-	import config, { Category } from "../config";
+	import { Category } from "../config";
+	import { defaultCategories } from "../defaultTunes";
 	import { computed } from "vue";
 	import { useI18n } from "../services/i18n";
 
@@ -53,7 +54,12 @@
 	});
 
 	const filterCats = computed(() => {
-		const cats: Partial<Record<Category, string>> = Object.fromEntries(Object.entries(config.filterCats).map(([cat, desc]) => [cat, desc()]));
+		// The categories are collected from the tune definitions; their display names come from the i18n
+		// key config.category-<category>, falling back to the category key itself
+		const cats: Partial<Record<Category, string>> = Object.fromEntries(defaultCategories.map((cat) => [
+			cat,
+			i18n.t(`config.category-${cat}`, { defaultValue: cat })
+		]));
 		if (!props.showCustom)
 			delete cats.custom;
 		return cats;

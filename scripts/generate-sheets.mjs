@@ -16,7 +16,14 @@
  * - SHEETS_SUBTITLE: the subtitle on the cover page (default: "Tune sheets")
  * - SHEETS_SOURCE: where the sheets were generated from, e.g. a player URL (shown on the cover page)
  * - SHEETS_LOGO: path to a PNG/JPEG logo shown on the cover page
- * - SHEETS_VERSION: the version shown on the cover page and in the page footers (default: today's date)
+ * - SHEETS_VERSION: a fixed version shown in all page footers. By default, each tune page instead shows a
+ *   per-tune version: the date of the last change to the tune's folder according to the git history (see
+ *   scripts/tune-versions.mjs), and the cover/contents pages show the newest of those dates.
+ * - SHEETS_VERSION_TUNES: a colon-separated list of tunes directories whose git history determines the
+ *   per-tune versions (default: assets/tunes). Derived players should point this at their own tunes
+ *   directory inside a copy of their repository (including .git), so that the versions reflect their own
+ *   change history — plus additionally at assets/tunes if they reuse tune folders (e.g. descriptions) from
+ *   this repo.
  */
 
 import { createServer } from "node:http";
@@ -26,6 +33,7 @@ import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 import { PDFDocument, PDFHexString, PDFName, StandardFonts, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import { getTuneVersions } from "./tune-versions.mjs";
 
 /**
  * Unicode font candidates for the cover/TOC text of the booklet (the tune pages themselves are rendered by the
@@ -68,7 +76,9 @@ const titleOverride = process.env.SHEETS_TITLE;
 const subtitle = process.env.SHEETS_SUBTITLE ?? "Tune sheets";
 const source = process.env.SHEETS_SOURCE;
 const logoPath = process.env.SHEETS_LOGO;
-const version = process.env.SHEETS_VERSION ?? new Date().toLocaleDateString("sv-SE"); // local date as YYYY-MM-DD
+const versionOverride = process.env.SHEETS_VERSION;
+const versionTunesDirs = (process.env.SHEETS_VERSION_TUNES ?? path.join(rootDir, "assets", "tunes")).split(":").filter((dir) => dir !== "");
+const today = new Date().toLocaleDateString("sv-SE"); // local date as YYYY-MM-DD
 
 /** Serves the dist folder (and the SHEETS_STATIC_DIRS) on an ephemeral localhost port. */
 async function serveDist() {
@@ -170,7 +180,7 @@ const PAGE_MARGIN = 42.52; // 15mm
 const TOC_ENTRIES_PER_PAGE = 40;
 
 /** Draws the sheet title, the page number and the version at the bottom of the page. */
-function drawFooter(page, font, title, pageNumber) {
+function drawFooter(page, font, title, pageNumber, version) {
 	const label = encodableText(font, `${title} · Page ${pageNumber} · Version ${version}`);
 	page.drawText(label, {
 		x: (page.getWidth() - font.widthOfTextAtSize(label, 9)) / 2,
@@ -182,17 +192,17 @@ function drawFooter(page, font, title, pageNumber) {
 }
 
 /** Adds a title/page number/version footer to each page of a single-tune PDF. */
-async function stampFooters(pdfBytes, title) {
+async function stampFooters(pdfBytes, title, version) {
 	const doc = await PDFDocument.load(pdfBytes);
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	doc.getPages().forEach((page, i) => {
-		drawFooter(page, font, title, i + 1);
+		drawFooter(page, font, title, i + 1, version);
 	});
 	return await doc.save();
 }
 
 /** Combines the single-tune PDFs into a booklet with a cover page, table of contents, page numbers and bookmarks. */
-async function generateBooklet(appName, tunes, rawPdfs) {
+async function generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion) {
 	const singleDocs = [];
 	for (const tune of tunes) {
 		singleDocs.push(await PDFDocument.load(rawPdfs.get(tune.slug)));
@@ -205,7 +215,7 @@ async function generateBooklet(appName, tunes, rawPdfs) {
 	const entries = tunes.map((tune, i) => {
 		const startPage = nextPage;
 		nextPage += singleDocs[i].getPageCount();
-		return { ...tune, startPage };
+		return { ...tune, startPage, endPage: nextPage - 1 };
 	});
 
 	const booklet = await PDFDocument.create();
@@ -280,10 +290,13 @@ async function generateBooklet(appName, tunes, rawPdfs) {
 		}
 	}
 
-	// Title/page number/version footers (all pages except the cover)
+	// Title/page number/version footers (all pages except the cover); tune pages show the version of
+	// their tune, the contents pages show the booklet-wide version
 	const pages = booklet.getPages();
 	for (let i = 1; i < pages.length; i++) {
-		drawFooter(pages[i], font, title, i + 1);
+		const pageNumber = i + 1;
+		const entry = entries.find((entry) => entry.startPage <= pageNumber && pageNumber <= entry.endPage);
+		drawFooter(pages[i], font, title, pageNumber, entry != null ? versionOf(entry) : bookletVersion);
 	}
 
 	addOutline(booklet, entries.map((entry) => ({ title: entry.displayName, pageIndex: entry.startPage - 1 })));
@@ -312,6 +325,10 @@ async function main() {
 			throw new Error("No tunes found (window.bbSheetIndex is empty).");
 		}
 
+		const tuneVersions = versionOverride != null ? new Map() : await getTuneVersions(tunes, versionTunesDirs);
+		const versionOf = (tune) => versionOverride ?? tuneVersions.get(tune.name) ?? today;
+		const bookletVersion = versionOverride ?? [...tuneVersions.values()].sort().pop() ?? today;
+
 		const rawPdfs = new Map();
 		for (const tune of tunes) {
 			console.log(`Generating sheet for ${tune.name} (${tune.slug}.pdf)...`);
@@ -331,9 +348,9 @@ async function main() {
 		// The footers are stamped into the single PDFs only after the booklet has copied their pages,
 		// so that the booklet pages get their booklet-wide page numbers instead
 		console.log("Generating booklet.pdf...");
-		await generateBooklet(appName, tunes, rawPdfs);
+		await generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion);
 		for (const tune of tunes) {
-			await writeFile(path.join(outDir, `${tune.slug}.pdf`), await stampFooters(rawPdfs.get(tune.slug), titleOverride ?? appName));
+			await writeFile(path.join(outDir, `${tune.slug}.pdf`), await stampFooters(rawPdfs.get(tune.slug), titleOverride ?? appName, versionOf(tune)));
 		}
 
 		console.log(`Generated ${tunes.length} tune sheets and the booklet in ${outDir}.`);

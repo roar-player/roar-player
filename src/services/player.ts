@@ -58,7 +58,8 @@ function applyTempoMarks(raw: RawPatternWithUpbeat, marks: TempoMark[]): RawPatt
 }
 
 for(const i in audioFiles) {
-	const m = i.match(/^(.*?)_([a-f0-9]+)\.mp3$/i);
+	// The stroke sounds live in assets/instruments/<instrument>/<hex code of the stroke character>.mp3
+	const m = i.match(/^instruments\/([^/]+)\/([a-f0-9]+)\.mp3$/i);
 	if (!m) {
 		// eslint-disable-next-line no-console
 		console.warn(`Unexpected audio file name: ${i}`);

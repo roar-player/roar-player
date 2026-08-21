@@ -1,24 +1,26 @@
-FROM httpd:2.4-alpine
+FROM node:lts-alpine AS build
 
-RUN echo "AddType text/cache-manifest .manifest" >> /usr/local/apache2/conf/httpd.conf
+# chromium + ttf-dejavu + font-noto-emoji are used to generate the PDF tune sheets (the browser that
+# Puppeteer would download itself does not run on Alpine/musl); git is used to determine the per-tune
+# sheet versions from the repository history (the .git directory must be part of the build context,
+# with the full history — a shallow clone yields no per-tune versions)
+RUN apk add --update-cache git chromium ttf-dejavu font-noto-emoji && \
+    git config --global --add safe.directory /player
 
-RUN apk --no-cache update && apk --no-cache add git nodejs yarn dumb-init chromium ttf-dejavu font-noto-emoji
-
-RUN adduser -D -h /opt/ror-player -s /bin/sh beatbox
-USER beatbox
-WORKDIR /opt/ror-player/
-
-COPY --chown=beatbox ./ ./
-
-# The PDF tune sheets are rendered with the system Chromium instead of the browser downloaded by Puppeteer,
-# which does not run on Alpine (musl)
 ENV PUPPETEER_SKIP_DOWNLOAD=1
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-RUN yarn install && yarn build && yarn build-sheets && rm -rf node_modules
+WORKDIR /player
+COPY ./ ./
 
-USER root
-RUN mv dist/* /usr/local/apache2/htdocs/
+RUN yarn install && yarn build && yarn build-sheets
+
+FROM httpd:2.4-alpine AS production
+
+RUN echo "AddType text/cache-manifest .manifest" >> /usr/local/apache2/conf/httpd.conf && \
+    apk --no-cache add dumb-init
+
+COPY --from=build /player/dist /usr/local/apache2/htdocs/
 
 ENTRYPOINT [ "/usr/bin/dumb-init", "--" ]
 

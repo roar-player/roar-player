@@ -42,8 +42,8 @@ i18n.init({
 }).catch((err) => console.error("Error initializing i18n", err)); // eslint-disable-line no-console
 
 const TUNE_DESCRIPTIONS_NS = "tune-descriptions";
-for (const [filename, module] of Object.entries(import.meta.glob('../../assets/tuneDescriptions/*/*.md', { eager: true }))) {
-	const m = filename.match(/([^/\\]+)[/\\]([^/\\]+)\.md/)!;
+for (const [filename, module] of Object.entries(import.meta.glob('../../assets/tunes/*/description.*.md', { eager: true }))) {
+	const m = filename.match(/([^/\\]+)[/\\]description\.([^/.\\]+)\.md$/)!;
 	i18n.addResource(m[2], TUNE_DESCRIPTIONS_NS, m[1], (module as any).html);
 }
 

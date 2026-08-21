@@ -1,5 +1,6 @@
-import config, { Stroke } from "../config";
+import config, { Instrument, Stroke } from "../config";
 import { Tune } from "./tune";
+import { defaultTuneFolders } from "../defaultTunes";
 
 /**
  * Helpers specific to the generated printable tune sheets (see src/ui/sheet/). The condensed pattern
@@ -8,13 +9,11 @@ import { Tune } from "./tune";
 
 /**
  * Returns a URL/filename-safe identifier for a tune, used as the file name of generated sheet PDFs.
- * Uses the description filename if the tune has one, otherwise a slug is derived from the tune name.
+ * For default tunes this is the name of the tune's folder in assets/tunes/, otherwise a slug is derived
+ * from the tune name.
  */
-export function getTuneSlug(tuneName: string, tune?: Tune): string {
-	if (tune?.descriptionFilename) {
-		return tune.descriptionFilename;
-	}
-	return tuneName
+export function getTuneSlug(tuneName: string): string {
+	return defaultTuneFolders[tuneName] ?? tuneName
 		.normalize("NFD")
 		.replace(/[\u0300-\u036f]/g, "")
 		.toLowerCase()
@@ -27,9 +26,14 @@ export function tuneHasSheet(tune: Tune): boolean {
 	return Object.values(tune.patterns).some((pattern) => !pattern.hideFromSheet);
 }
 
-/** Returns all strokes that appear in any visible pattern of the given tunes, in the order in which they appear in config.strokes. */
-export function getUsedStrokes(tunes: Tune[]): Stroke[] {
-	const used = new Set<string>();
+/**
+ * Returns all instrument/stroke combinations that appear in any visible pattern of the given tunes
+ * (strokes are configured per instrument, so the same stroke character can mean different things on
+ * different instruments). Ordered by instrument, then by the instrument's configured stroke order
+ * (with unconfigured strokes at the end).
+ */
+export function getUsedStrokes(tunes: Tune[]): Array<{ instrument: Instrument; stroke: Stroke }> {
+	const used: Partial<Record<Instrument, Set<Stroke>>> = {};
 	for (const tune of tunes) {
 		for (const pattern of Object.values(tune.patterns)) {
 			if (pattern.hideFromSheet) {
@@ -38,11 +42,21 @@ export function getUsedStrokes(tunes: Tune[]): Stroke[] {
 			for (const instrument of config.instrumentKeys) {
 				for (const stroke of pattern[instrument] || []) {
 					if (stroke && stroke.trim() !== "") {
-						used.add(stroke);
+						(used[instrument] ??= new Set()).add(stroke);
 					}
 				}
 			}
 		}
 	}
-	return Object.keys(config.strokes).filter((stroke) => used.has(stroke));
+	return config.instrumentKeys.flatMap((instrument) => {
+		const usedStrokes = used[instrument];
+		if (!usedStrokes) {
+			return [];
+		}
+		const configured = Object.keys(config.instruments[instrument].strokes);
+		return [
+			...configured.filter((stroke) => usedStrokes.has(stroke)),
+			...[...usedStrokes].filter((stroke) => !configured.includes(stroke))
+		].map((stroke) => ({ instrument, stroke }));
+	});
 }

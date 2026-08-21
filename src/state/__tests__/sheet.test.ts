@@ -4,7 +4,7 @@ import { normalizeTune } from "../tune";
 import { getUsedStrokes, tuneHasSheet } from "../sheet";
 
 describe("getUsedStrokes", () => {
-	test("collects the distinct strokes of all patterns in config order", () => {
+	test("collects the distinct instrument/stroke combinations of all patterns", () => {
 		const tune = normalizeTune({
 			patterns: {
 				"Tune": patternFromCompressed({ length: 4, ls: "X 0 s           ", ag: "o a             " }),
@@ -13,14 +13,14 @@ describe("getUsedStrokes", () => {
 		});
 
 		const strokes = getUsedStrokes([tune]);
-		expect(strokes).toContain("X");
-		expect(strokes).toContain("0");
-		expect(strokes).toContain("s");
-		expect(strokes).toContain("f");
-		expect(strokes).toContain("o");
-		expect(strokes).toContain("a");
-		expect(strokes).not.toContain("r");
-		expect(strokes).not.toContain(" ");
+		expect(strokes).toContainEqual({ instrument: "ls", stroke: "X" });
+		expect(strokes).toContainEqual({ instrument: "ls", stroke: "0" });
+		expect(strokes).toContainEqual({ instrument: "ls", stroke: "s" });
+		expect(strokes).toContainEqual({ instrument: "re", stroke: "f" });
+		expect(strokes).toContainEqual({ instrument: "ag", stroke: "o" });
+		expect(strokes).toContainEqual({ instrument: "ag", stroke: "a" });
+		expect(strokes.filter((entry) => entry.stroke === "r")).toEqual([]);
+		expect(strokes.filter((entry) => entry.stroke === " ")).toEqual([]);
 	});
 
 	test("ignores patterns that are hidden from the sheet", () => {
@@ -31,7 +31,7 @@ describe("getUsedStrokes", () => {
 			}
 		});
 
-		expect(getUsedStrokes([tune])).toEqual(["X"]);
+		expect(getUsedStrokes([tune])).toEqual([{ instrument: "ls", stroke: "X" }]);
 	});
 });
 

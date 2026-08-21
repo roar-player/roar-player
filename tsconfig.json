@@ -12,7 +12,7 @@
 	"references": [
 		{ "path": "./tsconfig.node.json" }
 	],
-	"include": ["src/**/*.ts", "src/**/*.vue"],
+	"include": ["src/**/*.ts", "src/**/*.vue", "assets/tunes/**/*.ts", "assets/instruments/**/*.ts"],
 	"vueCompilerOptions": {
 		"strictTemplates": true
 	}

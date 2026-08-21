@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-	import defaultTunes from "../../defaultTunes";
+	import { defaultTuneFolders } from "../../defaultTunes";
 	import config from "../../config";
 	import { clone, useRefWithOverride } from "../../utils";
 	import { computed, ref, watch } from "vue";
@@ -31,13 +31,15 @@
 	const tune = computed(() => props.tuneName && state.value.tunes[props.tuneName]);
 
 	/** The URL of the PDF sheet generated from the pattern definitions (see scripts/generate-sheets.mjs). */
-	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName, tune.value || undefined)}.pdf`);
+	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName)}.pdf`);
 	const tuneDescriptionHtml = computed(() => {
-		if(!defaultTunes[props.tuneName]?.descriptionFilename)
+		const folder = defaultTuneFolders[props.tuneName];
+		const html = folder ? getTuneDescriptionHtml(folder) : "";
+		if(!html)
 			return null;
 
 		const el = document.createElement("div");
-		el.innerHTML = getTuneDescriptionHtml(defaultTunes[props.tuneName].descriptionFilename!);
+		el.innerHTML = html;
 		for (const link of el.querySelectorAll("a")) {
 			link.setAttribute("target", "_blank");
 		}

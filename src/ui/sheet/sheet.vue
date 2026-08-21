@@ -41,7 +41,7 @@
 	watchEffect(() => {
 		window.bbSheetIndex = allTuneNames.value.map((name) => ({
 			name,
-			slug: getTuneSlug(name, state.value.tunes[name]),
+			slug: getTuneSlug(name),
 			displayName: getLocalizedDisplayName(state.value.tunes[name].displayName || name)
 		}));
 	});

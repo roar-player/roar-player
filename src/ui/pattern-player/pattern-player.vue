@@ -570,15 +570,15 @@
 							<HeadphonesButton :instrument="instrumentKey" v-model:playbackSettings="playbackSettings" groupSurdos />
 							<MuteButton :instrument="instrumentKey" v-model:playbackSettings="playbackSettings" />
 						</td>
-						<td v-for="stroke in renderedStrokes" :key="stroke.i" class="stroke" :class="[...getStrokeClass(stroke.i, instrumentKey), ternaryCSSClasses[instrumentKey][stroke.i - pattern.upbeat], { repeat: stroke.inRepeat }]" v-tooltip="config.strokesDescription[pattern[instrumentKey][stroke.i]]?.() || ''">
-							<span v-if="readonly" class="stroke-inner">{{config.strokes[pattern[instrumentKey][stroke.i]]}}</span>
+						<td v-for="stroke in renderedStrokes" :key="stroke.i" class="stroke" :class="[...getStrokeClass(stroke.i, instrumentKey), ternaryCSSClasses[instrumentKey][stroke.i - pattern.upbeat], { repeat: stroke.inRepeat }]" v-tooltip="config.instruments[instrumentKey].strokes[pattern[instrumentKey][stroke.i]]?.description?.() || ''">
+							<span v-if="readonly" class="stroke-inner">{{config.instruments[instrumentKey].strokes[pattern[instrumentKey][stroke.i]]?.display}}</span>
 							<a v-if="!readonly"
 								href="javascript:" class="stroke-inner"
 								:id="`bb-pattern-player-stroke-${instrumentKey}-${stroke.i}`"
 								@click="clickStroke(instrumentKey, stroke.i)"
 								draggable="false"
 							>
-								{{config.strokes[pattern[instrumentKey][stroke.i]] || '\xa0'}}
+								{{config.instruments[instrumentKey].strokes[pattern[instrumentKey][stroke.i]]?.display || '\xa0'}}
 							</a>
 						</td>
 					</tr>

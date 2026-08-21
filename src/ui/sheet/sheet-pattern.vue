@@ -181,14 +181,17 @@
 		});
 	});
 
+	/** Returns the display representation of a stroke. All instruments of a condensed row play the same line, so the first instrument's stroke config is used. */
+	const getStrokeDisplay = (row: CondensedRow, stroke: string | undefined): string => {
+		return !stroke || stroke === " " ? "" : (config.instruments[row.instruments[0]]?.strokes[stroke]?.display ?? stroke);
+	};
+
 	const getStroke = (row: CondensedRow, bar: RenderBar, strokeIdx: number): string => {
-		const stroke = row.strokes[sheet.value.upbeat + bar.barIdx * barStrokes.value + strokeIdx];
-		return !stroke || stroke === " " ? "" : (config.strokes[stroke] ?? stroke);
+		return getStrokeDisplay(row, row.strokes[sheet.value.upbeat + bar.barIdx * barStrokes.value + strokeIdx]);
 	};
 
 	const getUpbeatStroke = (row: CondensedRow, strokeIdx: number): string => {
-		const stroke = row.strokes[strokeIdx];
-		return !stroke || stroke === " " ? "" : (config.strokes[stroke] ?? stroke);
+		return getStrokeDisplay(row, row.strokes[strokeIdx]);
 	};
 
 	const getStrokeClass = (rowIdx: number, bar: RenderBar, strokeIdx: number): string[] => {

@@ -5,7 +5,7 @@
 
 <script setup lang="ts">
 	import config from "../../config";
-	import defaultTunes from "../../defaultTunes";
+	import { defaultTuneFolders } from "../../defaultTunes";
 	import { Tune } from "../../state/tune";
 	import { computed } from "vue";
 	import SheetPattern from "./sheet-pattern.vue";
@@ -27,8 +27,8 @@
 	const speed = computed(() => props.tune.speed ?? config.defaultSpeed);
 
 	const descriptionHtml = computed(() => {
-		const descriptionFilename = defaultTunes[props.tuneName]?.descriptionFilename;
-		return descriptionFilename ? getTuneDescriptionHtml(descriptionFilename) : undefined;
+		const folder = defaultTuneFolders[props.tuneName];
+		return folder ? getTuneDescriptionHtml(folder) || undefined : undefined;
 	});
 
 	const visiblePatterns = computed(() => Object.fromEntries(
