@@ -15,16 +15,13 @@ COPY ./ ./
 
 RUN yarn install && yarn build && yarn build-sheets
 
-FROM httpd:2.4-alpine AS production
+FROM nginx:stable-alpine AS production
 
-RUN echo "AddType text/cache-manifest .manifest" >> /usr/local/apache2/conf/httpd.conf && \
-    apk --no-cache add dumb-init
+COPY --from=build /player/dist /usr/share/nginx/html/
 
-COPY --from=build /player/dist /usr/local/apache2/htdocs/
-
-ENTRYPOINT [ "/usr/bin/dumb-init", "--" ]
-
-ENV TITLE RoR Player
+ENV TITLE RoaR Player
 ENV DESCRIPTION A pattern-based drumming machine.
 
-CMD [ "/bin/sh", "-c", "sed -ri /usr/local/apache2/htdocs/index.html -e \"s@<title>[^<]*</title>@<title>$TITLE</title>@\" -e \"s@(<meta name=\\\"description\\\" content=\\\")[^\\\"]*(\\\">)@\\\\1$DESCRIPTION\\\\2@\" && httpd-foreground" ]
+# The nginx image's entrypoint runs its init scripts and then execs the CMD, so the title/description
+# of the served app can still be customized through the TITLE/DESCRIPTION environment variables
+CMD [ "/bin/sh", "-c", "sed -ri /usr/share/nginx/html/index.html -e \"s@<title>[^<]*</title>@<title>$TITLE</title>@\" -e \"s@(<meta name=\\\"description\\\" content=\\\")[^\\\"]*(\\\">)@\\\\1$DESCRIPTION\\\\2@\" && exec nginx -g 'daemon off;'" ]
