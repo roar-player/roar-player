@@ -4,7 +4,7 @@ Each subdirectory of this folder fully defines one tune. This is deliberate: all
 
 A tune folder contains:
 
-- **`patterns.ts`** — the tune definition. It exports the tune name and a `RawTune` object (see `../helpers.ts`, which also provides shared helper functions like `repeat()` and `crescendo()`). The folder name is the tune's slug: a URL/filename-safe identifier used e.g. as the file name of the generated sheet PDF — keep it lowercase-with-dashes. All folders matching `*/patterns.ts` are picked up automatically by `src/defaultTunes.ts`.
+- **`patterns.ts`** — the tune definition. It exports the tune name and a `RawTune` object (see `../helpers.ts`, which also provides shared helper functions like `repeat()` and `crescendo()`). The folder name is the tune's slug: a URL/filename-safe identifier used e.g. as the file name of the generated sheet PDF — keep it lowercase-with-dashes. All folders matching `*/patterns.ts` are picked up automatically by `src/defaultTunes.ts`. A `patterns.ts` that exports nothing (e.g. with the whole tune definition commented out, plus a bare `export {};`) is skipped — use this to prepare tunes that are not ready to be published yet.
 - **`description.${lang}.md`** — the localized tune descriptions displayed in “Listen” mode, one file per language.
 - Any other tune-related assets you want to keep together with the tune.
 

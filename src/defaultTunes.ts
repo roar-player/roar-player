@@ -10,7 +10,7 @@ import { categoryOrder, type RawTune } from "../assets/tunes/helpers";
  * the tune's data — see assets/tunes/README.md). This module picks up all of these folders, resolves the
  * compressed pattern notation and exposes the result.
  */
-const tuneModules = import.meta.glob<{ tuneName: string; tune: RawTune }>("../assets/tunes/*/patterns.ts", { eager: true });
+const tuneModules = import.meta.glob<Partial<{ tuneName: string; tune: RawTune }>>("../assets/tunes/*/patterns.ts", { eager: true });
 
 const rawTunes: { [tuneName: string]: RawTune } = {};
 
@@ -22,6 +22,9 @@ const rawTunes: { [tuneName: string]: RawTune } = {};
 export const defaultTuneFolders: Record<string, string> = {};
 
 for (const [modulePath, module] of Object.entries(tuneModules)) {
+	if (module.tuneName == null || module.tune == null) {
+		continue; // A tune folder whose definition is commented out (prepared for later)
+	}
 	rawTunes[module.tuneName] = module.tune;
 	defaultTuneFolders[module.tuneName] = modulePath.split("/").at(-2)!;
 }
@@ -64,8 +67,9 @@ for(const i in rawTunes) {
 
 		for(const k of config.instrumentKeys) {
 			const thisPattern = pattern[k] = pattern[k] || "";
-			const m = thisPattern.match(/^@([a-z]{2})$/);
-			if(m)
+			// A line of the form "@xy" references the line of instrument xy (which must be defined above it)
+			const m = thisPattern.match(/^@(..)$/);
+			if(m && config.instrumentKeys.includes(m[1] as Instrument))
 				newPattern[k] = clone(newPattern[m[1] as Instrument]);
 			else {
 				newPattern[k] = thisPattern.split('');
