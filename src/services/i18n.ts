@@ -113,6 +113,22 @@ export function getAppInstructionsHtml(): string {
 }
 
 export function getLocalizedDisplayName(name: string): string {
+	// Data-driven translations from the "display-names" section of the language files (assets/i18n/):
+	// first the exact name is looked up, then a variant with the first number replaced by a {{n}}
+	// placeholder (so a single key like "Break {{n}}" translates "Break 1" through "Break 10").
+	// Untranslated names fall through to the hardcoded defaults below.
+	const exact = getI18n().t(`display-names.${name}`, { defaultValue: "" });
+	if (exact) {
+		return exact;
+	}
+	const numberMatch = name.match(/\d+/);
+	if (numberMatch) {
+		const numbered = getI18n().t(`display-names.${name.replace(/\d+/, "{{n}}")}`, { defaultValue: "", n: numberMatch[0] });
+		if (numbered) {
+			return numbered;
+		}
+	}
+
 	switch (name) {
 		case "General Breaks":
 			return getI18n().t("i18n.general-breaks");
