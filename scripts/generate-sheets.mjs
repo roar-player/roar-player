@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
  * Generates printable PDF tune sheets from the pattern definitions, using the #/sheet/ routes of the built app
- * (run `vite build` first). For each tune, a single-tune A4 PDF is generated, and all tunes are additionally
- * combined into a booklet with a cover page, a table of contents, page numbers and PDF bookmarks.
+ * (run `vite build` first). The sheets are generated in every language of the app (one per file in
+ * assets/i18n/, i.e. the same list that the web UI language picker offers; texts that have no translation
+ * fall back to English, just like in the web UI). For each tune and language, a single-tune A4 PDF is
+ * generated, and all tunes are additionally combined into a per-language booklet with a cover page, a table
+ * of contents, page numbers and PDF bookmarks.
  *
- * Output: dist/pdf/<tune-slug>.pdf and dist/pdf/booklet.pdf
+ * Output: dist/pdf/<tune-slug>.<lang>.pdf and dist/pdf/booklet.<lang>.pdf
  *
  * The sheets are rendered by headless Chromium. Puppeteer downloads a suitable browser during `yarn install`;
  * to use a system browser instead (e.g. in a Docker build), set PUPPETEER_SKIP_DOWNLOAD=1 during the install
@@ -13,7 +16,7 @@
  * The booklet cover and the page footers can be customized through environment variables:
  * - SHEETS_TITLE: the title on the cover page and in the page footers (default: the app name, i.e. the HTML
  *   title of the build)
- * - SHEETS_SUBTITLE: the subtitle on the cover page (default: "Tune sheets")
+ * - SHEETS_SUBTITLE: the subtitle on the cover page (default: the localized booklet title, e.g. "Tune sheets")
  * - SHEETS_SOURCE: where the sheets were generated from, e.g. a player URL (shown on the cover page)
  * - SHEETS_LOGO: path to a PNG/JPEG logo shown on the cover page
  * - SHEETS_VERSION: a fixed version shown in all page footers. By default, each tune page instead shows a
@@ -27,7 +30,7 @@
  */
 
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
@@ -73,7 +76,7 @@ const CONTENT_TYPES = {
 const extraStaticDirs = (process.env.SHEETS_STATIC_DIRS ?? "").split(":").filter((dir) => dir !== "");
 
 const titleOverride = process.env.SHEETS_TITLE;
-const subtitle = process.env.SHEETS_SUBTITLE ?? "Tune sheets";
+const subtitleOverride = process.env.SHEETS_SUBTITLE;
 const source = process.env.SHEETS_SOURCE;
 const logoPath = process.env.SHEETS_LOGO;
 const versionOverride = process.env.SHEETS_VERSION;
@@ -180,8 +183,12 @@ const PAGE_MARGIN = 42.52; // 15mm
 const TOC_ENTRIES_PER_PAGE = 40;
 
 /** Draws the sheet title, the page number and the version at the bottom of the page. */
-function drawFooter(page, font, title, pageNumber, version) {
-	const label = encodableText(font, `${title} · Page ${pageNumber} · Version ${version}`);
+function drawFooter(page, font, l10n, title, pageNumber, version) {
+	// The footer text is localized (see the l10n collection in main()), with the placeholders replaced here
+	const label = encodableText(font, l10n.footer
+		.replaceAll("\u0001", title)
+		.replaceAll("\u0002", String(pageNumber))
+		.replaceAll("\u0003", String(version)));
 	page.drawText(label, {
 		x: (page.getWidth() - font.widthOfTextAtSize(label, 9)) / 2,
 		y: 17,
@@ -192,17 +199,17 @@ function drawFooter(page, font, title, pageNumber, version) {
 }
 
 /** Adds a title/page number/version footer to each page of a single-tune PDF. */
-async function stampFooters(pdfBytes, title, version) {
+async function stampFooters(pdfBytes, l10n, title, version) {
 	const doc = await PDFDocument.load(pdfBytes);
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	doc.getPages().forEach((page, i) => {
-		drawFooter(page, font, title, i + 1, version);
+		drawFooter(page, font, l10n, title, i + 1, version);
 	});
 	return await doc.save();
 }
 
 /** Combines the single-tune PDFs into a booklet with a cover page, table of contents, page numbers and bookmarks. */
-async function generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion) {
+async function generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion, lang, l10n) {
 	const singleDocs = [];
 	for (const tune of tunes) {
 		singleDocs.push(await PDFDocument.load(rawPdfs.get(tune.slug)));
@@ -244,16 +251,14 @@ async function generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersio
 		size: 32,
 		font: fontBold
 	});
-	const coverSubtitle = encodableText(font, subtitle);
+	const coverSubtitle = encodableText(font, subtitleOverride ?? l10n.subtitle);
 	cover.drawText(coverSubtitle, {
 		x: (PAGE_WIDTH - font.widthOfTextAtSize(coverSubtitle, 20)) / 2,
 		y: PAGE_HEIGHT / 2 + 20,
 		size: 20,
 		font
 	});
-	const generatedLine = encodableText(font, source != null
-		? `Generated from ${source}`
-		: "Generated from the pattern definitions");
+	const generatedLine = encodableText(font, l10n.generated);
 	cover.drawText(generatedLine, {
 		x: (PAGE_WIDTH - font.widthOfTextAtSize(generatedLine, 10)) / 2,
 		y: PAGE_HEIGHT / 2 - 20,
@@ -266,7 +271,7 @@ async function generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersio
 		const page = booklet.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 		let y = PAGE_HEIGHT - PAGE_MARGIN;
 		if (tocPage === 0) {
-			page.drawText("Contents", { x: PAGE_MARGIN, y: y - 16, size: 16, font: fontBold });
+			page.drawText(encodableText(fontBold, l10n.contents), { x: PAGE_MARGIN, y: y - 16, size: 16, font: fontBold });
 			y -= 40;
 		}
 		for (const entry of entries.slice(tocPage * TOC_ENTRIES_PER_PAGE, (tocPage + 1) * TOC_ENTRIES_PER_PAGE)) {
@@ -296,16 +301,23 @@ async function generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersio
 	for (let i = 1; i < pages.length; i++) {
 		const pageNumber = i + 1;
 		const entry = entries.find((entry) => entry.startPage <= pageNumber && pageNumber <= entry.endPage);
-		drawFooter(pages[i], font, title, pageNumber, entry != null ? versionOf(entry) : bookletVersion);
+		drawFooter(pages[i], font, l10n, title, pageNumber, entry != null ? versionOf(entry) : bookletVersion);
 	}
 
 	addOutline(booklet, entries.map((entry) => ({ title: entry.displayName, pageIndex: entry.startPage - 1 })));
 
-	await writeFile(path.join(outDir, "booklet.pdf"), await booklet.save());
+	await writeFile(path.join(outDir, `booklet.${lang}.pdf`), await booklet.save());
 }
 
 async function main() {
 	await mkdir(outDir, { recursive: true });
+
+	// One set of sheets is generated per app language (see the language picker of the web UI); texts
+	// without a translation fall back to English through the app's usual i18n fallback
+	const langs = (await readdir(path.join(rootDir, "assets", "i18n")))
+		.filter((file) => file.endsWith(".json"))
+		.map((file) => file.slice(0, -".json".length))
+		.sort();
 
 	const { server, url } = await serveDist();
 	const browser = await puppeteer.launch({
@@ -317,43 +329,62 @@ async function main() {
 		const page = await browser.newPage();
 		page.setDefaultTimeout(120000);
 
-		await page.goto(`${url}#/sheet/`, { waitUntil: "load" });
-		await page.waitForSelector(".bb-sheet");
-		const appName = await page.title();
-		const tunes = await page.evaluate(() => window.bbSheetIndex);
-		if (!tunes?.length) {
-			throw new Error("No tunes found (window.bbSheetIndex is empty).");
+		let versionOf, bookletVersion;
+		for (const lang of langs) {
+			await page.goto(`${url}?lang=${encodeURIComponent(lang)}#/sheet/`, { waitUntil: "load" });
+			await page.waitForSelector(".bb-sheet");
+			const appName = await page.title();
+			const tunes = await page.evaluate(() => window.bbSheetIndex);
+			if (!tunes?.length) {
+				throw new Error("No tunes found (window.bbSheetIndex is empty).");
+			}
+
+			if (!versionOf) {
+				// The versions are language-independent, compute them only once
+				const tuneVersions = versionOverride != null ? new Map() : await getTuneVersions(tunes, versionTunesDirs);
+				versionOf = (tune) => versionOverride ?? tuneVersions.get(tune.name) ?? today;
+				bookletVersion = versionOverride ?? [...tuneVersions.values()].sort().pop() ?? today;
+			}
+
+			// The localized texts for the parts of the PDFs that are not rendered by the browser (booklet
+			// cover, table of contents, page footers). The footer placeholders are substituted in drawFooter().
+			const l10n = await page.evaluate((source) => ({
+				subtitle: window.bbTranslate("sheet.booklet-title"),
+				generated: source != null
+					? window.bbTranslate("sheet.generated-source", { source })
+					: window.bbTranslate("sheet.generated", { appName: document.title }),
+				contents: window.bbTranslate("sheet.contents"),
+				footer: window.bbTranslate("sheet.footer", { title: "\u0001", page: "\u0002", version: "\u0003" })
+			}), source ?? null);
+
+			const rawPdfs = new Map();
+			for (const tune of tunes) {
+				console.log(`Generating sheet for ${tune.name} (${tune.slug}.${lang}.pdf)...`);
+				await page.evaluate((tuneName) => {
+					location.hash = `#/sheet/${encodeURIComponent(tuneName)}`;
+				}, tune.name);
+				await page.waitForFunction((tuneName) => {
+					const sheet = document.querySelector(".bb-sheet-single");
+					return sheet != null && sheet.getAttribute("data-tune-name") === tuneName && sheet.querySelector(".bb-sheet-tune") != null;
+				}, {}, tune.name);
+				rawPdfs.set(tune.slug, await page.pdf({
+					preferCSSPageSize: true,
+					printBackground: true
+				}));
+			}
+
+			// The footers are stamped into the single PDFs only after the booklet has copied their pages,
+			// so that the booklet pages get their booklet-wide page numbers instead
+			console.log(`Generating booklet.${lang}.pdf...`);
+			await generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion, lang, l10n);
+			for (const tune of tunes) {
+				await writeFile(path.join(outDir, `${tune.slug}.${lang}.pdf`), await stampFooters(rawPdfs.get(tune.slug), l10n, titleOverride ?? appName, versionOf(tune)));
+			}
+
+			console.log(`Generated ${tunes.length} tune sheets and the booklet for language ${lang}.`);
 		}
 
-		const tuneVersions = versionOverride != null ? new Map() : await getTuneVersions(tunes, versionTunesDirs);
-		const versionOf = (tune) => versionOverride ?? tuneVersions.get(tune.name) ?? today;
-		const bookletVersion = versionOverride ?? [...tuneVersions.values()].sort().pop() ?? today;
-
-		const rawPdfs = new Map();
-		for (const tune of tunes) {
-			console.log(`Generating sheet for ${tune.name} (${tune.slug}.pdf)...`);
-			await page.evaluate((tuneName) => {
-				location.hash = `#/sheet/${encodeURIComponent(tuneName)}`;
-			}, tune.name);
-			await page.waitForFunction((tuneName) => {
-				const sheet = document.querySelector(".bb-sheet-single");
-				return sheet != null && sheet.getAttribute("data-tune-name") === tuneName && sheet.querySelector(".bb-sheet-tune") != null;
-			}, {}, tune.name);
-			rawPdfs.set(tune.slug, await page.pdf({
-				preferCSSPageSize: true,
-				printBackground: true
-			}));
-		}
-
-		// The footers are stamped into the single PDFs only after the booklet has copied their pages,
-		// so that the booklet pages get their booklet-wide page numbers instead
-		console.log("Generating booklet.pdf...");
-		await generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion);
-		for (const tune of tunes) {
-			await writeFile(path.join(outDir, `${tune.slug}.pdf`), await stampFooters(rawPdfs.get(tune.slug), titleOverride ?? appName, versionOf(tune)));
-		}
-
-		console.log(`Generated ${tunes.length} tune sheets and the booklet in ${outDir}.`);
+		console.log(`Generated the tune sheets and booklets for ${langs.length} languages (${langs.join(", ")}) in ${outDir}.`);
 	} finally {
 		await browser.close();
 		server.close();

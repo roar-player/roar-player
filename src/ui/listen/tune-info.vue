@@ -30,8 +30,8 @@
 
 	const tune = computed(() => props.tuneName && state.value.tunes[props.tuneName]);
 
-	/** The URL of the PDF sheet generated from the pattern definitions (see scripts/generate-sheets.mjs). */
-	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName)}.pdf`);
+	/** The URL of the PDF sheet generated from the pattern definitions in the current language (see scripts/generate-sheets.mjs). */
+	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName)}.${i18n.currentResolvedLanguage}.pdf`);
 	const tuneDescriptionHtml = computed(() => {
 		const folder = defaultTuneFolders[props.tuneName];
 		const html = folder ? getTuneDescriptionHtml(folder) : "";

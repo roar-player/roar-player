@@ -201,7 +201,10 @@
 		"speed": "{{bpm}} bpm",
 		"booklet-title": "Tune sheets",
 		"tune-not-found": "This tune does not exist.",
-		"generated": "Generated from the {{appName}} pattern definitions"
+		"generated": "Generated from the {{appName}} pattern definitions",
+		"generated-source": "Generated from {{source}}",
+		"contents": "Contents",
+		"footer": "{{title}} · Page {{page}} · Version {{version}}"
 	},
 	"pattern-length-picker": {
 		"length": "Length: {{length}}"

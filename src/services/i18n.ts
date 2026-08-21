@@ -76,6 +76,7 @@ export function getI18n(): {
 	t: typeof i18n["t"];
 	changeLanguage: (lang: string) => Promise<void>;
 	currentLanguage: string;
+	currentResolvedLanguage: string;
 } {
 	return {
 		t: i18n.t,
@@ -88,6 +89,13 @@ export function getI18n(): {
 			// Consume resource change counter to make this reactive to language changes
 			i18nResourceChangeCounter.value;
 			return i18n.language;
+		},
+
+		get currentResolvedLanguage() {
+			// The language of LANGUAGES that is actually in use (e.g. "de" when the detected "de-CH" is
+			// resolved to it), e.g. for the names of the generated sheet PDFs
+			i18nResourceChangeCounter.value;
+			return i18n.resolvedLanguage ?? DEFAULT_LANGUAGE;
 		}
 	};
 }

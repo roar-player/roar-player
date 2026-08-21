@@ -10,6 +10,8 @@
 		interface Window {
 			/** The list of available tune sheets, exposed for the PDF generation script (scripts/generate-sheets.mjs). */
 			bbSheetIndex?: Array<{ name: string; slug: string; displayName: string }>;
+			/** Translates an i18n key in the current language, exposed for the PDF generation script (scripts/generate-sheets.mjs). */
+			bbTranslate?: (key: string, options?: Record<string, unknown>) => string;
 		}
 	}
 </script>
@@ -45,6 +47,8 @@
 			displayName: getLocalizedDisplayName(state.value.tunes[name].displayName || name)
 		}));
 	});
+
+	window.bbTranslate = (key, options) => i18n.t(key, options as any) as string;
 </script>
 
 <template>
