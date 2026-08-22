@@ -70,6 +70,25 @@ for(const i in audioFiles) {
 	void Beatbox.registerInstrument(`${m[1]}_${String.fromCodePoint(parseInt(m[2], 16))}`, decompressed.buffer as ArrayBuffer);
 }
 
+/**
+ * Laptop audio hardware powers down after a few seconds of silence and takes a moment to ramp back up,
+ * swallowing the first strokes of a fresh playback (most audibly the low ones like surdos). Beatbox
+ * creates a new AudioContext on every play() and closes it on stop(), so none of its contexts outlives
+ * a playback. Instead, keep one silent AudioContext running for the lifetime of the tab: it holds the
+ * audio output stream open, which prevents the device from suspending. It must be created during a user
+ * gesture to satisfy the browsers' autoplay policies, hence the first pointer/key event (which also
+ * precedes any click on a play button).
+ */
+let keepAliveContext: AudioContext | undefined;
+function keepAudioOutputAlive(): void {
+	if (!keepAliveContext) {
+		keepAliveContext = new AudioContext();
+		void keepAliveContext.resume();
+	}
+}
+document.addEventListener("pointerdown", keepAudioOutputAlive, { once: true, capture: true });
+document.addEventListener("keydown", keepAudioOutputAlive, { once: true, capture: true });
+
 let currentNumber = 0;
 
 const players: {
