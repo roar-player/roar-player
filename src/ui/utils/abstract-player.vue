@@ -151,7 +151,7 @@
 		top: 0;
 		left: 0;
 		height: 100%;
-		border-left: 1px solid #000;
+		border-left: 1px solid var(--bs-body-color);
 		/* The marker moves via transform (rather than left) on its own compositor layer (will-change), so that */
 		/* the per-frame updates during playback neither invalidate the layout (the scroll position reads right */
 		/* after would force a synchronous reflow of the whole pattern table) nor repaint the table behind it */

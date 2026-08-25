@@ -632,26 +632,22 @@
 				overflow: visible;
 				padding: 0;
 
-				.stroke-inner {
-					color: rgb(33, 37, 41);
-				}
-
 				&.is-triplet .stroke-inner {
 					color: var(--bs-pink);
 				}
 
 				&.repeat {
-					background-color: #ececec;
+					background-color: var(--bb-repeat-bg);
 				}
 
 				&.has-changes {
-					background-color: #fbe8d0;
+					background-color: var(--bb-modified);
 				}
 			}
 
 			&.compose {
 				.stroke {
-					border-right: 1px solid #f3f3f3;
+					border-right: 1px solid var(--bb-weak-border-color);
 				}
 			}
 
@@ -666,11 +662,11 @@
 			&.listen tr:last-child {
 				.stroke-inner:not(:empty) {
 					/* Shouting: Hide table lines behind overlapping text */
-					background-color: #fff;
+					background-color: var(--bs-body-bg);
 				}
 
 				.stroke.repeat .stroke-inner:not(:empty) {
-					background-color: #ececec;
+					background-color: var(--bb-repeat-bg);
 				}
 			}
 
@@ -679,6 +675,7 @@
 				min-width: 2.7ex;
 				min-height: 1em;
 				text-decoration: none;
+				color: inherit;
 				/* Paint above the (position: relative) stroke cells, so that text that is wider than its cell */
 				/* (e.g. at high subdivisions) is not painted over by the backgrounds of the following cells */
 				/* (e.g. in repeated blocks of the condensed view) */
@@ -687,7 +684,7 @@
 			}
 
 			thead td {
-				border-bottom: 1px solid #aaa;
+				border-bottom: 1px solid var(--bb-strong-border-color);
 				padding-bottom: .5ex;
 			}
 
@@ -709,7 +706,7 @@
 				// indicator row, it is drawn as a box shadow reaching into the preceding cell, so that it
 				// aligns with the bar line below (the border-right of the previous bar's last stroke).
 				&.has-mark {
-					box-shadow: -2px 0 0 #888;
+					box-shadow: -2px 0 0 var(--bb-strong-border-color);
 				}
 			}
 
@@ -727,7 +724,7 @@
 				}
 
 				&.repeat {
-					background-color: #ececec;
+					background-color: var(--bb-repeat-bg);
 				}
 
 				// The bar lines are extended up through the indicator row where a block starts/ends. The start
@@ -735,11 +732,11 @@
 				// bar line below (the border-right of the bar's last stroke) instead of shifting the block's
 				// first column by the border width (the table uses the separate border model).
 				&.repeat-start {
-					box-shadow: -2px 0 0 #888;
+					box-shadow: -2px 0 0 var(--bb-strong-border-color);
 				}
 
 				&.repeat-end {
-					border-right: 2px solid #888;
+					border-right: 2px solid var(--bb-strong-border-color);
 				}
 
 				.repeat-buttons {
@@ -751,30 +748,30 @@
 					background: none;
 					padding: 0 0.5ex;
 					font-size: 0.85em;
-					color: #666;
+					color: color-mix(in srgb, var(--bs-body-color) 60%, transparent);
 					cursor: pointer;
 
 					&:hover:not(:disabled) {
-						color: #000;
+						color: var(--bs-body-color);
 					}
 
 					&:disabled {
-						color: #ccc;
+						color: var(--bb-disabled-link-color);
 						cursor: default;
 					}
 				}
 			}
 
 			.beat.repeat {
-				background-color: #ececec;
+				background-color: var(--bb-repeat-bg);
 			}
 
 			.beat, .stroke.before-beat {
-				border-right: 1px solid #aaa;
+				border-right: 1px solid var(--bb-strong-border-color);
 			}
 
 			.instrument-operations, .stroke.before-bar, .beat.before-bar {
-				border-right: 2px solid #888;
+				border-right: 2px solid var(--bb-strong-border-color);
 			}
 
 			.instrument-operations {
@@ -797,8 +794,8 @@
 			}
 
 			.beat.active span {
-				background-color: #3a94a5;
-				color: #fff;
+				background-color: var(--bb-active-beat-bg);
+				color: var(--bb-active-beat-color);
 				transition: none;
 			}
 
@@ -878,48 +875,48 @@
 
 			&.time-2 {
 				.stroke-0 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-3 {
 				.stroke--2, .stroke-0, .stroke-1 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-4 {
 				.stroke--2, .stroke--3,
 				.stroke-0, .stroke-1, .stroke-2 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-5 {
 				.stroke--2, .stroke--3, .stroke--4,
 				.stroke-0, .stroke-1, .stroke-2, .stroke-3 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-6 {
 				.stroke--3, .stroke--5,
 				.stroke-1,  .stroke-3, {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-8 {
 				.stroke--3, .stroke--5, .stroke--7,
 				.stroke-1,  .stroke-3,  .stroke-5 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-9 {
 				.stroke--4, .stroke--7,
 				.stroke-2,  .stroke-5 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
@@ -927,13 +924,13 @@
 				.stroke:not(.is-triplet) {
 					&.stroke--4, &.stroke--7, &.stroke--10,
 					&.stroke-2,  &.stroke-5,  &.stroke-8 {
-						border-right: 1px solid #ddd;
+						border-right: 1px solid var(--bs-border-color);
 					}
 				}
 				.stroke.is-triplet {
 					&.stroke--5, &.stroke--9,
 					&.stroke-3,  &.stroke-7 {
-						border-right: 1px solid #ddd;
+						border-right: 1px solid var(--bs-border-color);
 					}
 				}
 			}
@@ -941,14 +938,14 @@
 			&.time-16 {
 				.stroke--5, .stroke--9, .stroke--13,
 				.stroke-3,  .stroke-7,  .stroke-11 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
 			&.time-20 {
 				.stroke--6, .stroke--11, .stroke--16,
 				.stroke-4,  .stroke-9,   .stroke-14 {
-					border-right: 1px solid #ddd;
+					border-right: 1px solid var(--bs-border-color);
 				}
 			}
 
@@ -956,13 +953,13 @@
 				.stroke:not(.is-triplet) {
 					&.stroke--7, &.stroke--13, &.stroke--19,
 					&.stroke-5,  &.stroke-11,  &.stroke-17 {
-						border-right: 1px solid #ddd;
+						border-right: 1px solid var(--bs-border-color);
 					}
 				}
 				.stroke.is-triplet {
 					&.stroke--9, &.stroke--17,
 					&.stroke-7,  &.stroke-15 {
-						border-right: 1px solid #ddd;
+						border-right: 1px solid var(--bs-border-color);
 					}
 				}
 			}
