@@ -8,8 +8,12 @@
 
 	declare global {
 		interface Window {
-			/** The list of available tune sheets, exposed for the PDF generation script (scripts/generate-sheets.mjs). */
-			bbSheetIndex?: Array<{ name: string; slug: string; displayName: string }>;
+			/**
+			 * The list of available tune sheets, exposed for the PDF generation script (scripts/generate-sheets.mjs).
+			 * descriptionLanguages lists the languages in which the tune has a description (language-independent);
+			 * the script only renders a tune in those languages (plus the fallback language).
+			 */
+			bbSheetIndex?: Array<{ name: string; slug: string; displayName: string; descriptionLanguages: string[] }>;
 			/** Translates an i18n key in the current language, exposed for the PDF generation script (scripts/generate-sheets.mjs). */
 			bbTranslate?: (key: string, options?: Record<string, unknown>) => string;
 		}
@@ -24,7 +28,8 @@
 	import { getTuneSlug, tuneHasSheet } from "../../state/sheet";
 	import SheetTune from "./sheet-tune.vue";
 	import SheetLegend from "./sheet-legend.vue";
-	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
+	import { getLocalizedDisplayName, getTuneDescriptionLanguages, useI18n } from "../../services/i18n";
+	import { defaultTuneFolders } from "../../defaultTunes";
 
 	const props = defineProps<{
 		tuneName?: string;
@@ -41,11 +46,15 @@
 	const tune = computed(() => props.tuneName != null ? state.value.tunes[props.tuneName] : undefined);
 
 	watchEffect(() => {
-		window.bbSheetIndex = allTuneNames.value.map((name) => ({
-			name,
-			slug: getTuneSlug(name),
-			displayName: getLocalizedDisplayName(state.value.tunes[name].displayName || name)
-		}));
+		window.bbSheetIndex = allTuneNames.value.map((name) => {
+			const folder = defaultTuneFolders[name];
+			return {
+				name,
+				slug: getTuneSlug(name),
+				displayName: getLocalizedDisplayName(state.value.tunes[name].displayName || name),
+				descriptionLanguages: folder != null ? getTuneDescriptionLanguages(folder) : []
+			};
+		});
 	});
 
 	window.bbTranslate = (key, options) => i18n.t(key, options as any) as string;

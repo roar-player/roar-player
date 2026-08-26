@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
  * Generates printable PDF tune sheets from the pattern definitions, using the #/sheet/ routes of the built app
- * (run `vite build` first). The sheets are generated in every language of the app (one per file in
- * assets/i18n/, i.e. the same list that the web UI language picker offers; texts that have no translation
- * fall back to English, just like in the web UI). For each tune and language, a single-tune A4 PDF is
- * generated, and all tunes are additionally combined into a per-language booklet with a cover page, a table
- * of contents, page numbers and PDF bookmarks.
+ * (run `vite build` first). In the fallback language (English, or the first language of assets/i18n/ if there
+ * is no English), a single-tune A4 PDF is generated for every tune. In each other language of the app (one per
+ * file in assets/i18n/, i.e. the same list that the web UI language picker offers), only the tunes that have a
+ * description in that language are rendered — for the other tunes the app links their fallback-language PDF
+ * instead (see getSheetPdfLanguage() in src/state/sheet.ts). All tunes are additionally combined into a
+ * per-language booklet with a cover page, a table of contents, page numbers and PDF bookmarks; tunes that are
+ * not rendered in a language appear in its booklet as their fallback-language pages (which is what the web UI
+ * shows for them anyway, minus some localized labels). Languages in which no tune has a description are
+ * skipped entirely (the app links the fallback-language PDFs, see getBookletPdfLanguage()).
  *
  * Output: dist/pdf/<tune-slug>.<lang>.pdf and dist/pdf/booklet.<lang>.pdf
  *
@@ -319,6 +323,13 @@ async function main() {
 		.map((file) => file.slice(0, -".json".length))
 		.sort();
 
+	// The fallback language is generated first and completely; the other languages only render the tunes
+	// that have a description in them and reuse the fallback rendering for the rest. Must match
+	// SHEET_FALLBACK_LANGUAGE in src/state/sheet.ts, which derives the same language from the app's
+	// language list.
+	const fallbackLang = langs.includes("en") ? "en" : langs[0];
+	const orderedLangs = [fallbackLang, ...langs.filter((lang) => lang !== fallbackLang)];
+
 	const { server, url } = await serveDist();
 	const browser = await puppeteer.launch({
 		// --no-sandbox is required when running as root (e.g. in a Docker build)
@@ -330,13 +341,35 @@ async function main() {
 		page.setDefaultTimeout(120000);
 
 		let versionOf, bookletVersion;
-		for (const lang of langs) {
+		let fallbackIndex; // The tune index of the fallback-language pass (the list and descriptionLanguages are language-independent)
+		const fallbackPdfs = new Map();
+		const generatedLangs = [];
+		for (const lang of orderedLangs) {
+			const isFallback = lang === fallbackLang;
+
+			// In the non-fallback languages, only the tunes with a description in that language are rendered
+			// (the sheets of the other tunes would differ from their fallback-language sheets only in some
+			// localized labels); languages in which that applies to no tune at all are skipped entirely
+			const renderSlugs = isFallback ? null : new Set(
+				fallbackIndex.filter((tune) => tune.descriptionLanguages.includes(lang)).map((tune) => tune.slug)
+			);
+			if (renderSlugs != null && renderSlugs.size === 0) {
+				console.log(`Skipping language ${lang} (no tune has a description in this language, the app links the ${fallbackLang} PDFs instead).`);
+				continue;
+			}
+
 			await page.goto(`${url}?lang=${encodeURIComponent(lang)}#/sheet/`, { waitUntil: "load" });
 			await page.waitForSelector(".bb-sheet");
 			const appName = await page.title();
 			const tunes = await page.evaluate(() => window.bbSheetIndex);
 			if (!tunes?.length) {
 				throw new Error("No tunes found (window.bbSheetIndex is empty).");
+			}
+			if (tunes.some((tune) => !Array.isArray(tune.descriptionLanguages))) {
+				throw new Error("The built app does not expose the tunes' description languages, rebuild dist with `vite build`.");
+			}
+			if (isFallback) {
+				fallbackIndex = tunes;
 			}
 
 			if (!versionOf) {
@@ -357,8 +390,12 @@ async function main() {
 				footer: window.bbTranslate("sheet.footer", { title: "\u0001", page: "\u0002", version: "\u0003" })
 			}), source ?? null);
 
-			const rawPdfs = new Map();
+			// Tunes that are not rendered in this language keep their fallback-language sheet for the booklet
+			const rawPdfs = new Map(fallbackPdfs);
 			for (const tune of tunes) {
+				if (renderSlugs != null && !renderSlugs.has(tune.slug)) {
+					continue;
+				}
 				console.log(`Generating sheet for ${tune.name} (${tune.slug}.${lang}.pdf)...`);
 				await page.evaluate((tuneName) => {
 					location.hash = `#/sheet/${encodeURIComponent(tuneName)}`;
@@ -373,18 +410,29 @@ async function main() {
 				}));
 			}
 
+			if (isFallback) {
+				for (const [slug, pdf] of rawPdfs) {
+					fallbackPdfs.set(slug, pdf);
+				}
+			}
+
 			// The footers are stamped into the single PDFs only after the booklet has copied their pages,
-			// so that the booklet pages get their booklet-wide page numbers instead
+			// so that the booklet pages get their booklet-wide page numbers instead. Single PDFs are only
+			// written for the tunes rendered in this language.
 			console.log(`Generating booklet.${lang}.pdf...`);
 			await generateBooklet(appName, tunes, rawPdfs, versionOf, bookletVersion, lang, l10n);
 			for (const tune of tunes) {
+				if (renderSlugs != null && !renderSlugs.has(tune.slug)) {
+					continue;
+				}
 				await writeFile(path.join(outDir, `${tune.slug}.${lang}.pdf`), await stampFooters(rawPdfs.get(tune.slug), l10n, titleOverride ?? appName, versionOf(tune)));
 			}
 
-			console.log(`Generated ${tunes.length} tune sheets and the booklet for language ${lang}.`);
+			generatedLangs.push(lang);
+			console.log(`Generated ${renderSlugs?.size ?? tunes.length} tune sheets and the booklet for language ${lang}.`);
 		}
 
-		console.log(`Generated the tune sheets and booklets for ${langs.length} languages (${langs.join(", ")}) in ${outDir}.`);
+		console.log(`Generated the tune sheets and booklets for ${generatedLangs.length} of ${langs.length} languages (${generatedLangs.join(", ")}) in ${outDir}.`);
 	} finally {
 		await browser.close();
 		server.close();

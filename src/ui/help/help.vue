@@ -10,6 +10,7 @@
 	import config from "../../config";
 	import { useModal } from "../utils/modal";
 	import { getAppInstructionsHtml, LANGUAGES, useI18n } from "../../services/i18n";
+	import { getBookletPdfLanguage } from "../../state/sheet";
 	import { reactiveLocalStorage } from "../../services/localStorage";
 	import { themePreference } from "../../services/bootstrap";
 
@@ -32,8 +33,12 @@
 
 	const appInstructionsHtml = computed(() => getAppInstructionsHtml());
 
-	/** The URL of the generated tune sheet booklet in the current language (see scripts/generate-sheets.mjs). */
-	const bookletPdfUrl = computed(() => `pdf/booklet.${i18n.currentResolvedLanguage}.pdf`);
+	/**
+	 * The URL of the generated tune sheet booklet (see scripts/generate-sheets.mjs) in the current language,
+	 * or in the fallback language if no booklet is generated in the current language (because no tune has a
+	 * description in it).
+	 */
+	const bookletPdfUrl = computed(() => `pdf/booklet.${getBookletPdfLanguage(i18n.currentResolvedLanguage)}.pdf`);
 </script>
 
 <template>

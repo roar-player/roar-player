@@ -4,7 +4,7 @@ import { createInstance } from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { defineComponent, ref } from "vue";
 
-const DEFAULT_LANGUAGE = "en";
+export const DEFAULT_LANGUAGE = "en";
 
 const LANG_LOCAL_STORAGE = "lang";
 const LANG_QUERY = "lang";
@@ -42,9 +42,11 @@ i18n.init({
 }).catch((err) => console.error("Error initializing i18n", err)); // eslint-disable-line no-console
 
 const TUNE_DESCRIPTIONS_NS = "tune-descriptions";
+const tuneDescriptionLanguages: Record<string, string[]> = {};
 for (const [filename, module] of Object.entries(import.meta.glob('../../assets/tunes/*/description.*.md', { eager: true }))) {
 	const m = filename.match(/([^/\\]+)[/\\]description\.([^/.\\]+)\.md$/)!;
 	i18n.addResource(m[2], TUNE_DESCRIPTIONS_NS, m[1], (module as any).html);
+	(tuneDescriptionLanguages[m[1]] ??= []).push(m[2]);
 }
 
 const APP_INSTRUCTIONS_NS = "app-instructions";
@@ -106,6 +108,15 @@ export function useI18n(): ReturnType<typeof getI18n> {
 
 export function getTuneDescriptionHtml(tuneName: string): string {
 	return i18n.t(tuneName, { ns: TUNE_DESCRIPTIONS_NS, defaultValue: "" });
+}
+
+/**
+ * The languages in which the given tune folder (see defaultTuneFolders) has a description.<lang>.md.
+ * The generated sheet PDFs exist only in these languages (plus the fallback language), see
+ * getSheetPdfLanguage() in src/state/sheet.ts.
+ */
+export function getTuneDescriptionLanguages(tuneFolder: string): string[] {
+	return tuneDescriptionLanguages[tuneFolder] ?? [];
 }
 
 export function getAppInstructionsHtml(): string {

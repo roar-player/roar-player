@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { patternFromCompressed } from "../pattern";
 import { normalizeTune } from "../tune";
-import { getUsedStrokes, tuneHasSheet } from "../sheet";
+import { getBookletPdfLanguage, getSheetPdfLanguage, getUsedStrokes, SHEET_FALLBACK_LANGUAGE, tuneHasSheet } from "../sheet";
 
 describe("getUsedStrokes", () => {
 	test("collects the distinct instrument/stroke combinations of all patterns", () => {
@@ -32,6 +32,31 @@ describe("getUsedStrokes", () => {
 		});
 
 		expect(getUsedStrokes([tune])).toEqual([{ instrument: "ls", stroke: "X" }]);
+	});
+});
+
+describe("getSheetPdfLanguage", () => {
+	test("returns the requested language for tunes with a description in it", () => {
+		// Afoxe has a description in all app languages (assets/tunes/afoxe/)
+		expect(getSheetPdfLanguage("Afoxe", "de")).toBe("de");
+		expect(getSheetPdfLanguage("Afoxe", SHEET_FALLBACK_LANGUAGE)).toBe(SHEET_FALLBACK_LANGUAGE);
+	});
+
+	test("falls back for tunes without a description in the requested language", () => {
+		// General Breaks has no descriptions at all (assets/tunes/general-breaks/)
+		expect(getSheetPdfLanguage("General Breaks", "de")).toBe(SHEET_FALLBACK_LANGUAGE);
+		// The fallback-language sheet is always generated, even without a description
+		expect(getSheetPdfLanguage("General Breaks", SHEET_FALLBACK_LANGUAGE)).toBe(SHEET_FALLBACK_LANGUAGE);
+		// Non-default tunes (e.g. user-created ones) have no descriptions either
+		expect(getSheetPdfLanguage("No Such Tune", "de")).toBe(SHEET_FALLBACK_LANGUAGE);
+	});
+});
+
+describe("getBookletPdfLanguage", () => {
+	test("returns the requested language if any tune has a description in it, the fallback otherwise", () => {
+		expect(getBookletPdfLanguage("de")).toBe("de");
+		expect(getBookletPdfLanguage(SHEET_FALLBACK_LANGUAGE)).toBe(SHEET_FALLBACK_LANGUAGE);
+		expect(getBookletPdfLanguage("xx")).toBe(SHEET_FALLBACK_LANGUAGE);
 	});
 });
 

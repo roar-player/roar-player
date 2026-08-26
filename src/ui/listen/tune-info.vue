@@ -11,7 +11,7 @@
 	import { download, ExportType } from "../utils/export";
 	import { BeatboxReference, getPlayerById } from "../../services/player";
 	import { getLocalizedDisplayName, getTuneDescriptionHtml, T, useI18n } from "../../services/i18n";
-	import { getTuneSlug } from "../../state/sheet";
+	import { getSheetPdfLanguage, getTuneSlug } from "../../state/sheet";
 
 	const state = injectStateRequired();
 
@@ -30,8 +30,12 @@
 
 	const tune = computed(() => props.tuneName && state.value.tunes[props.tuneName]);
 
-	/** The URL of the PDF sheet generated from the pattern definitions in the current language (see scripts/generate-sheets.mjs). */
-	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName)}.${i18n.currentResolvedLanguage}.pdf`);
+	/**
+	 * The URL of the PDF sheet generated from the pattern definitions (see scripts/generate-sheets.mjs) in the
+	 * current language, or in the fallback language for tunes whose sheet is not generated in the current
+	 * language (because they have no description in it).
+	 */
+	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName)}.${getSheetPdfLanguage(props.tuneName, i18n.currentResolvedLanguage)}.pdf`);
 	const tuneDescriptionHtml = computed(() => {
 		const folder = defaultTuneFolders[props.tuneName];
 		const html = folder ? getTuneDescriptionHtml(folder) : "";

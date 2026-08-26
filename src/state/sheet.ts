@@ -1,6 +1,7 @@
 import config, { Instrument, Stroke } from "../config";
 import { Tune } from "./tune";
-import { defaultTuneFolders } from "../defaultTunes";
+import defaultTunes, { defaultTuneFolders } from "../defaultTunes";
+import { DEFAULT_LANGUAGE, getTuneDescriptionLanguages, LANGUAGES } from "../services/i18n";
 
 /**
  * Helpers specific to the generated printable tune sheets (see src/ui/sheet/). The condensed pattern
@@ -24,6 +25,36 @@ export function getTuneSlug(tuneName: string): string {
 /** Returns whether the given tune has any patterns that should be printed on the generated tune sheets. */
 export function tuneHasSheet(tune: Tune): boolean {
 	return Object.values(tune.patterns).some((pattern) => !pattern.hideFromSheet);
+}
+
+/**
+ * The language in which the sheet PDFs of all tunes are generated and that is linked instead of languages
+ * in which no PDF exists. scripts/generate-sheets.mjs derives the same language from the assets/i18n/ file
+ * names.
+ */
+export const SHEET_FALLBACK_LANGUAGE = LANGUAGES.includes(DEFAULT_LANGUAGE) ? DEFAULT_LANGUAGE : LANGUAGES[0];
+
+/**
+ * Returns the language whose generated sheet PDF should be linked for the given tune: the given language
+ * if a sheet exists in it (sheets are only generated in the languages in which the tune has a description,
+ * see scripts/generate-sheets.mjs), otherwise the fallback language, in which all sheets are generated.
+ */
+export function getSheetPdfLanguage(tuneName: string, lang: string): string {
+	const folder = defaultTuneFolders[tuneName];
+	return lang === SHEET_FALLBACK_LANGUAGE || (folder != null && getTuneDescriptionLanguages(folder).includes(lang))
+		? lang
+		: SHEET_FALLBACK_LANGUAGE;
+}
+
+/**
+ * Returns the language whose generated booklet PDF should be linked: the given language if a booklet
+ * exists in it (booklets are only generated in the languages in which at least one tune on the sheets has
+ * a description, see scripts/generate-sheets.mjs), otherwise the fallback language.
+ */
+export function getBookletPdfLanguage(lang: string): string {
+	return Object.keys(defaultTunes).some((tuneName) =>
+		tuneHasSheet(defaultTunes[tuneName]) && getSheetPdfLanguage(tuneName, lang) === lang
+	) ? lang : SHEET_FALLBACK_LANGUAGE;
 }
 
 /**
