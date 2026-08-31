@@ -97,10 +97,11 @@
 		</p>
 		<p><a :href="sheetPdfUrl" target="_blank">{{i18n.t("tune-info.tune-sheet-pdf")}}</a></p>
 
-		<div v-if="tune.video">
+		<div v-if="tune.videoFile || tune.video">
 			<h2>{{i18n.t("tune-info.video")}}</h2>
 			<div class="bb-tune-info-video">
-				<iframe allow="autoplay; fullscreen" :src="tune.video" frameborder="0" allowfullscreen></iframe>
+				<video v-if="tune.videoFile" :src="tune.videoFile" controls preload="metadata" playsinline></video>
+				<iframe v-else allow="autoplay; fullscreen" :src="tune.video" frameborder="0" allowfullscreen></iframe>
 			</div>
 		</div>
 
@@ -151,12 +152,17 @@
 			padding-top: 56.25%;
 			position: relative;
 
-			iframe {
+			iframe, video {
 				position: absolute;
 				top: 0;
 				left: 0;
 				width: 100%;
 				height: 100%;
+			}
+
+			video {
+				/* Letterbox videos that are not 16:9 against black like the embed players do */
+				background-color: #000;
 			}
 		}
 

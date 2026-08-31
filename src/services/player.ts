@@ -106,6 +106,31 @@ class CustomBeatbox extends Beatbox {
 		super.setPosition(position);
 		this.emit("setPosition");
 	}
+
+	/**
+	 * Beatbox derives the playback position from AudioContext.getOutputTimestamp(), while it schedules the
+	 * sounds against AudioContext.currentTime. Chrome and Safari sometimes never start reporting output
+	 * timestamps for a freshly created context while another context holds an output stream (which the
+	 * keep-alive context below always does) — contextTime then stays pinned at ~0 even though currentTime
+	 * advances and the audio plays fine, freezing the position marker on the first stroke. Fall back to
+	 * currentTime while the output timestamp is missing or implausibly far from the scheduling clock.
+	 */
+	_getCurrentTime(): number | undefined {
+		if (this.playing === 0 || !this._audioContext) {
+			return undefined;
+		}
+		const audioContext = this._audioContext as AudioContext;
+		const currentTime = audioContext.currentTime;
+		const timestamp = audioContext.getOutputTimestamp();
+		if (!timestamp.contextTime) {
+			return currentTime;
+		}
+		const outputTime = timestamp.contextTime + (performance.now() - timestamp.performanceTime!) / 1000;
+		// A healthy output timestamp lags behind the scheduling clock by the output latency (at most a few
+		// hundred ms even on Bluetooth) and never runs ahead of it.
+		const lag = currentTime - outputTime;
+		return (lag < 0 || lag > 0.5) ? currentTime : outputTime;
+	}
 }
 
 export function createBeatbox(repeat: boolean): BeatboxReference {

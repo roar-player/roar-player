@@ -55,6 +55,7 @@ export function extendState(
 					displayName: data.tunes[tuneName]!.displayName,
 					sheet: data.tunes[tuneName]!.sheet,
 					video: data.tunes[tuneName]!.video,
+					videoFile: data.tunes[tuneName]!.videoFile,
 					speed: data.tunes[tuneName]!.speed,
 					exampleSong: data.tunes[tuneName]!.exampleSong
 				});

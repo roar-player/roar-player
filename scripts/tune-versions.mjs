@@ -69,6 +69,7 @@ async function getFolderVersions(tunesDir, today) {
 
 	// -uall lists untracked files individually (a fully untracked directory is otherwise collapsed
 	// into a single "dir/" entry, which would not be attributable to a tune folder)
+	const dirtyFolders = new Set();
 	const status = await git(toplevel, "status", "--porcelain", "-uall", "--", prefix || ".");
 	for (const line of status.split("\n").filter((line) => line !== "")) {
 		// Rename lines look like "R  old -> new", make sure to catch both paths
@@ -76,8 +77,16 @@ async function getFolderVersions(tunesDir, today) {
 			const folder = folderOf(filePath);
 			if (folder != null) {
 				versions.set(folder, today);
+				dirtyFolders.add(folder);
 			}
 		}
+	}
+
+	if (versions.size > 1 && dirtyFolders.size === versions.size) {
+		// Every single tune folder is dirty or untracked, so every tune is stamped with today's date. This
+		// usually means the directory does not match the repository's history (e.g. a derived player copying
+		// its tunes folder under a different name than the one it is committed under).
+		console.warn(`Every tune folder in ${tunesDir} has uncommitted changes, all tunes count as changed today. Does the path match the one in the repository's history?`);
 	}
 	return versions;
 }
