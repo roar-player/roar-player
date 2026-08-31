@@ -17,6 +17,7 @@ RUN yarn install && yarn build && yarn build-sheets
 
 FROM nginx:stable-alpine AS production
 
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /player/dist /usr/share/nginx/html/
 
 ENV TITLE RoaR Player
