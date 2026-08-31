@@ -16,12 +16,7 @@ export const tuneValidator = z.object({
 	categories: z.array(categoryValidator).default(() => []),
 	displayName: z.string().optional(),
 	sheet: z.string().optional(),
-	/** URL of an embed page of a video hosting service, shown in an iframe. */
 	video: z.string().optional(),
-	/** URL of a video file, played in a native <video> element. Takes precedence over `video` — use it
-	 * for hosters whose embed page misrenders in a small frame (e.g. serving a full-screen mobile
-	 * viewer to phones), by pointing it at their direct download/stream URL of the file. */
-	videoFile: z.string().optional(),
 	speed: z.number().optional(),
 	exampleSong: z.array(exampleSongValidator).optional()
 }).default(() => ({}));
