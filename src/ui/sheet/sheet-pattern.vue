@@ -1,0 +1,506 @@
+<script lang="ts">
+	/**
+	 * Renders the notes of a single pattern as a condensed, print-friendly table: instruments that play the same
+	 * thing are merged into one row, repeated bars are rendered once with a repeat count (“3×” above the first
+	 * repeated bar), and long patterns are wrapped into multiple lines of bars.
+	 *
+	 * The table layout follows the pattern player: every beat has the same width independent of the subdivision,
+	 * overflowing stroke texts (e.g. shouts) stay visible, and beats that contain triplet strokes are colored and
+	 * get their subdivision dividers at thirds instead of quarters.
+	 */
+	export default {};
+</script>
+
+<script setup lang="ts">
+	import config from "../../config";
+	import { Pattern } from "../../state/pattern";
+	import { getCondensedPattern, CondensedRow, CondensedTempoMark } from "../../state/condensed";
+	import { getAnnotationText, getInstrumentsLabel, getTempoMarkLabel, getTempoMarkTooltip } from "../utils/condensed-annotations";
+	import { computed } from "vue";
+	import { getLocalizedDisplayName, useI18n } from "../../services/i18n";
+
+	const props = defineProps<{
+		patternName: string;
+		pattern: Pattern;
+	}>();
+
+	const i18n = useI18n();
+
+	const sheet = computed(() => getCondensedPattern(props.pattern));
+
+	const barStrokes = computed(() => 4 * sheet.value.time);
+
+	/** How many bars are rendered per line. With a uniform beat width, two bars always fit an A4 page. */
+	const BARS_PER_LINE = 2;
+
+	type RenderBar = {
+		/** The index of the bar in the (uncondensed) pattern, determines the beat numbers shown above the bar. */
+		barIdx: number;
+		/** The number of beats of this bar (can be less than 4 for the last bar of a pattern of unusual length). */
+		beats: number;
+		/** The index of the segment that this bar belongs to. */
+		segmentIdx: number;
+		/** Whether this bar is part of a repeated segment (highlighted with a grey background). */
+		inRepeat: boolean;
+		/** Whether this bar needs the indicator row above the beat numbers (repeat count or volume annotation). */
+		hasIndicator: boolean;
+		/** Set to the repeat count if this bar starts a repeated segment (rendered as “3×” above the bar). */
+		repeatCount?: number;
+	};
+
+	const renderBars = computed((): RenderBar[] => {
+		const ret: RenderBar[] = [];
+		sheet.value.segments.forEach((segment, segmentIdx) => {
+			for (let i = 0; i < segment.bars; i++) {
+				const barIdx = segment.startBar + i;
+				// An open segment is a repeat block even with repeat 1 (a single bar repeated indefinitely)
+				const isRepeat = segment.repeat > 1 || !!segment.open;
+				ret.push({
+					barIdx,
+					beats: Math.min(4, props.pattern.length - barIdx * 4),
+					segmentIdx,
+					inRepeat: isRepeat,
+					hasIndicator: isRepeat || segment.dynamics != null || segment.volume != null,
+					repeatCount: isRepeat && i === 0 ? segment.repeat : undefined
+				});
+			}
+		});
+		return ret;
+	});
+
+	/**
+	 * The cells of the indicator row above the beat numbers (repeat counts and volume annotations): one cell per
+	 * segment (per line), so that the grey background of a repeated block is continuous across its bars. Where a
+	 * block actually starts/ends (as opposed to being wrapped to another line), the bar line is extended up
+	 * through the cell; at a line wrap the grey runs to the edge of the line to indicate that the block
+	 * continues. Volume annotations on non-repeated segments get the same start/end bar lines, but no grey.
+	 */
+	const getIndicatorCells = (line: RenderBar[]) => {
+		const groups: Array<{ bars: RenderBar[] }> = [];
+		for (const bar of line) {
+			const last = groups[groups.length - 1];
+			if (last && last.bars[0].segmentIdx === bar.segmentIdx) {
+				last.bars.push(bar);
+			} else {
+				groups.push({ bars: [bar] });
+			}
+		}
+		return groups.map((group) => {
+			const segment = sheet.value.segments[group.bars[0].segmentIdx];
+			const startsSegment = group.bars[0].barIdx === segment.startBar;
+			const annotationText = startsSegment ? getAnnotationText(segment, group.bars[0].repeatCount != null) : undefined;
+			const hasIndicator = group.bars[0].hasIndicator;
+			return {
+				colspan: group.bars.reduce((sum, bar) => sum + bar.beats * sheet.value.time, 0),
+				label: group.bars[0].repeatCount != null ? `${segment.open ? "N" : group.bars[0].repeatCount}×` : "",
+				// Next to a repeat count the annotation is separated from it by a space
+				annotationText: annotationText && (group.bars[0].repeatCount != null ? ` ${annotationText}` : annotationText),
+				inRepeat: group.bars[0].inRepeat,
+				startsBlock: hasIndicator && startsSegment,
+				endsBlock: hasIndicator && group.bars[group.bars.length - 1].barIdx === segment.startBar + segment.bars - 1
+			};
+		});
+	};
+
+	/** The tempo marks (“speed up”/“slow down” at bar lines, through the speed hack) by the bar they are rendered at. */
+	const tempoMarksByBar = computed(() => {
+		const ret = new Map<number, CondensedTempoMark[]>();
+		for (const mark of sheet.value.tempoMarks) {
+			const existing = ret.get(mark.bar);
+			if (existing) {
+				existing.push(mark);
+			} else {
+				ret.set(mark.bar, [mark]);
+			}
+		}
+		return ret;
+	});
+
+	/** The rendered bars, wrapped into lines so that each line fits the width of an A4 page. */
+	const lines = computed((): RenderBar[][] => {
+		const ret: RenderBar[][] = [];
+		for (let i = 0; i < renderBars.value.length; i += BARS_PER_LINE) {
+			ret.push(renderBars.value.slice(i, i + BARS_PER_LINE));
+		}
+		return ret;
+	});
+
+	const displayName = computed(() => getLocalizedDisplayName(props.pattern.displayName || props.patternName));
+
+	const getRowLabel = (row: CondensedRow): string => {
+		if (row.label === "everybody") {
+			return i18n.t("condensed.everybody");
+		} else if (row.label === "everybody-else") {
+			return i18n.t("condensed.everybody-else");
+		}
+		return getInstrumentsLabel(row.instruments);
+	};
+
+	const hasNote = (row: CondensedRow, strokeIdx: number): boolean => {
+		const stroke = row.strokes[strokeIdx];
+		return stroke != null && stroke !== " ";
+	};
+
+	/**
+	 * For each row, whether each beat of the pattern body contains triplet strokes (strokes that are not on the
+	 * quarter grid of the beat). Only computed for the time signatures that can mix both grids (12 and 24).
+	 */
+	const tripletBeats = computed((): boolean[][] | undefined => {
+		const time = sheet.value.time;
+		if (time !== 12 && time !== 24) {
+			return undefined;
+		}
+		return sheet.value.rows.map((row) => {
+			const beats: boolean[] = [];
+			for (let beat = 0; beat * time < row.strokes.length - sheet.value.upbeat; beat++) {
+				let ternary = false;
+				for (let k = 0; k < time && !ternary; k++) {
+					ternary = k % 3 !== 0 && hasNote(row, sheet.value.upbeat + beat * time + k);
+				}
+				beats.push(ternary);
+			}
+			return beats;
+		});
+	});
+
+	/** Like tripletBeats, but for the (partial) beat formed by the upbeat strokes. */
+	const tripletUpbeat = computed((): boolean[] | undefined => {
+		const time = sheet.value.time;
+		if ((time !== 12 && time !== 24) || sheet.value.upbeat === 0) {
+			return undefined;
+		}
+		return sheet.value.rows.map((row) => {
+			for (let i = 0; i < sheet.value.upbeat; i++) {
+				// The upbeat is aligned to the end of its beat, and time is divisible by 3, so the position of the
+				// stroke within the triplet grid is ((i - upbeat) % 3 + 3) % 3.
+				if (((i - sheet.value.upbeat) % 3 + 3) % 3 !== 0 && hasNote(row, i)) {
+					return true;
+				}
+			}
+			return false;
+		});
+	});
+
+	/** Returns the display representation of a stroke. All instruments of a condensed row play the same line, so the first instrument's stroke config is used. */
+	const getStrokeDisplay = (row: CondensedRow, stroke: string | undefined): string => {
+		return !stroke || stroke === " " ? "" : (config.instruments[row.instruments[0]]?.strokes[stroke]?.display ?? stroke);
+	};
+
+	const getStroke = (row: CondensedRow, bar: RenderBar, strokeIdx: number): string => {
+		return getStrokeDisplay(row, row.strokes[sheet.value.upbeat + bar.barIdx * barStrokes.value + strokeIdx]);
+	};
+
+	const getUpbeatStroke = (row: CondensedRow, strokeIdx: number): string => {
+		return getStrokeDisplay(row, row.strokes[strokeIdx]);
+	};
+
+	const getStrokeClass = (rowIdx: number, bar: RenderBar, strokeIdx: number): string[] => {
+		const time = sheet.value.time;
+		const ret = ["stroke", `stroke-${strokeIdx % time}`];
+		if (strokeIdx === 0) {
+			ret.push("after-bar");
+		}
+		if ((strokeIdx + 1) % time === 0) {
+			ret.push("before-beat");
+		}
+		if (strokeIdx === bar.beats * time - 1) {
+			ret.push("before-bar");
+		}
+		if (bar.inRepeat) {
+			ret.push("repeat");
+		}
+		if (tripletBeats.value?.[rowIdx][bar.barIdx * 4 + Math.floor(strokeIdx / time)]) {
+			ret.push("is-triplet");
+		}
+		return ret;
+	};
+
+	const getUpbeatStrokeClass = (rowIdx: number, strokeIdx: number): string[] => {
+		const time = sheet.value.time;
+		// The upbeat is aligned to the end of its beat, so its strokes get the positions at the end of the beat
+		// (which gives them the same subdivision dividers as the regular beats)
+		const position = (((strokeIdx - sheet.value.upbeat) % time) + time) % time;
+		const ret = ["stroke", `stroke-${position}`];
+		if (strokeIdx === 0) {
+			ret.push("after-bar");
+		}
+		if (position === time - 1) {
+			ret.push("before-beat");
+		}
+		if (strokeIdx === sheet.value.upbeat - 1) {
+			ret.push("before-bar");
+		}
+		if (tripletUpbeat.value?.[rowIdx]) {
+			ret.push("is-triplet");
+		}
+		return ret;
+	};
+
+	const getBeatClass = (bar: RenderBar, beat: number): string[] => {
+		const ret = ["beat", beat === 1 ? "after-bar" : "after-beat"];
+		if (beat === bar.beats) {
+			ret.push("before-bar");
+		}
+		if (bar.inRepeat) {
+			ret.push("repeat");
+		}
+		return ret;
+	};
+</script>
+
+<template>
+	<div class="bb-sheet-pattern">
+		<h2>{{displayName}}</h2>
+
+		<table v-for="(line, lineIdx) in lines" :key="lineIdx" :class="`time-${sheet.time}`" translate="no">
+			<thead>
+				<tr v-if="line.some((bar) => tempoMarksByBar.has(bar.barIdx))">
+					<th class="row-label"></th>
+					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
+					<td v-for="bar in line" :key="bar.barIdx" :colspan="bar.beats * sheet.time" class="tempo-mark-cell" :class="{ 'has-mark': tempoMarksByBar.has(bar.barIdx) }"><span v-if="tempoMarksByBar.has(bar.barIdx)" class="tempo-mark" :title="getTempoMarkTooltip(tempoMarksByBar.get(bar.barIdx)!)">{{getTempoMarkLabel(tempoMarksByBar.get(bar.barIdx)!)}}</span></td>
+				</tr>
+				<tr v-if="line.some((bar) => bar.hasIndicator)">
+					<th class="row-label"></th>
+					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat"></td>
+					<td v-for="(cell, cellIdx) in getIndicatorCells(line)" :key="cellIdx" :colspan="cell.colspan" class="repeat-count" :class="{ repeat: cell.inRepeat, 'repeat-start': cell.startsBlock, 'repeat-end': cell.endsBlock }">{{cell.label}}<span v-if="cell.annotationText" class="repeat-dynamics">{{cell.annotationText}}</span></td>
+				</tr>
+				<tr>
+					<th class="row-label"></th>
+					<td v-if="lineIdx === 0 && sheet.upbeat > 0" :colspan="sheet.upbeat" class="upbeat"></td>
+					<template v-for="bar in line" :key="bar.barIdx">
+						<td v-for="beat in bar.beats" :key="beat" :colspan="sheet.time" :class="getBeatClass(bar, beat)">{{bar.barIdx * 4 + beat}}</td>
+					</template>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for="(row, rowIdx) in sheet.rows" :key="rowIdx" :class="{ vocals: row.instruments.includes('ot') }">
+					<th class="row-label">{{getRowLabel(row)}}</th>
+					<template v-if="lineIdx === 0 && sheet.upbeat > 0">
+						<td
+							v-for="strokeIdx in sheet.upbeat"
+							:key="strokeIdx"
+							:class="getUpbeatStrokeClass(rowIdx, strokeIdx - 1)"
+						><span class="stroke-inner">{{getUpbeatStroke(row, strokeIdx - 1)}}</span></td>
+					</template>
+					<template v-for="bar in line" :key="bar.barIdx">
+						<td
+							v-for="strokeIdx in bar.beats * sheet.time"
+							:key="strokeIdx"
+							:class="getStrokeClass(rowIdx, bar, strokeIdx - 1)"
+						><span class="stroke-inner">{{getStroke(row, bar, strokeIdx - 1)}}</span></td>
+					</template>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</template>
+
+<style lang="scss">
+	.bb-sheet-pattern {
+		$beat-width: 18mm;
+
+		margin-bottom: 4mm;
+
+		h2 {
+			font-size: 11pt;
+			font-weight: bold;
+			margin: 0 0 1mm 0;
+			padding-bottom: 0.8mm;
+			border-bottom: 1px solid #eaecef;
+			// Keep the title together with (at least) the first line of the pattern
+			break-after: avoid;
+		}
+
+		table {
+			border-collapse: collapse;
+			margin-bottom: 1.5mm;
+			// Page breaks happen between the lines of a pattern, not within one (breaking whole patterns
+			// leads to almost-empty pages before long patterns)
+			break-inside: avoid;
+		}
+
+		th.row-label {
+			width: 30mm;
+			min-width: 30mm;
+			text-align: left;
+			vertical-align: middle;
+			font-weight: normal;
+			font-size: 9pt;
+			padding-right: 2mm;
+		}
+
+		thead {
+			td {
+				font-size: 8pt;
+				vertical-align: bottom;
+			}
+
+			td.beat {
+				text-align: left;
+				padding-left: 1mm;
+
+				&.after-beat {
+					border-left: 0.75pt solid #666;
+				}
+
+				&.after-bar {
+					border-left: 1.5pt solid #000;
+				}
+
+				&.before-bar {
+					border-right: 1.5pt solid #000;
+				}
+
+			}
+
+			td.tempo-mark-cell {
+				font-size: 8pt;
+				text-align: left;
+				padding-left: 1mm;
+				height: 4.8mm;
+				vertical-align: bottom;
+
+				// The bar line is extended up through the tempo row at the marked bar, so that the mark
+				// visually sits on the bar line where the tempo changes
+				&.has-mark {
+					border-left: 1.5pt solid #000;
+				}
+			}
+
+			td.repeat-count {
+				font-size: 8pt;
+				font-weight: bold;
+				text-align: left;
+				padding-left: 1mm;
+				// Uniform height also for the cells without a repeat count (blocks continued from the previous line)
+				height: 4.8mm;
+
+				.repeat-dynamics {
+					font-weight: normal;
+					font-style: italic;
+				}
+
+				&.repeat {
+					background-color: #ececec;
+				}
+
+				// The bar lines are extended up through the repeat row where a block actually starts/ends;
+				// at a line wrap there is no border, so the grey runs to the edge of the line to indicate
+				// that the block continues
+				&.repeat-start {
+					border-left: 1.5pt solid #000;
+				}
+
+				&.repeat-end {
+					border-right: 1.5pt solid #000;
+				}
+			}
+
+			td.beat.repeat {
+				background-color: #ececec;
+			}
+		}
+
+		$stroke-height: 4.5mm;
+
+		td.stroke {
+			text-align: center;
+			font-size: 9pt;
+			height: $stroke-height;
+			vertical-align: middle;
+			padding: 0;
+			overflow: visible;
+
+			.stroke-inner {
+				// A block of the full cell height, so that the background of overflowing texts covers the whole cell
+				display: block;
+				width: max-content;
+				margin: 0 auto;
+				white-space: nowrap;
+				height: $stroke-height;
+				line-height: $stroke-height;
+			}
+
+			&.is-triplet .stroke-inner {
+				color: #d63384;
+			}
+
+			&.before-beat {
+				border-right: 0.75pt solid #666;
+			}
+
+			&.before-bar {
+				border-right: 1.5pt solid #000;
+			}
+
+			&.after-bar {
+				border-left: 1.5pt solid #000;
+			}
+
+			&.repeat {
+				background-color: #ececec;
+			}
+		}
+
+		// Shouting texts overflow their (narrow) cells; the background hides the table lines behind them.
+		// position/z-index lift the text above the borders of the following cells, which would otherwise be
+		// painted on top of the overflowing part.
+		tr.vocals .stroke-inner:not(:empty) {
+			position: relative;
+			z-index: 1;
+			background-color: #fff;
+			padding: 0 0.3mm;
+		}
+
+		tr.vocals td.stroke.repeat .stroke-inner:not(:empty) {
+			background-color: #ececec;
+		}
+
+		// Every beat has the same width, independent of the subdivision. The subdivision dividers are drawn at the
+		// quarters of the beat (the same positions as in the pattern player).
+		$subdivisions: (
+			2: (0,),
+			3: (0, 1),
+			4: (0, 1, 2),
+			5: (0, 1, 2, 3),
+			6: (1, 3),
+			8: (1, 3, 5),
+			9: (2, 5),
+			12: (2, 5, 8),
+			16: (3, 7, 11),
+			20: (4, 9, 14),
+			24: (5, 11, 17)
+		);
+
+		@each $time, $dividers in $subdivisions {
+			table.time-#{$time} {
+				td.stroke {
+					max-width: calc(#{$beat-width} / #{$time});
+				}
+
+				.stroke-inner {
+					min-width: calc(#{$beat-width} / #{$time});
+				}
+
+				@each $i in $dividers {
+					td.stroke.stroke-#{$i}:not(.is-triplet) {
+						border-right: 0.5pt solid #bbb;
+					}
+				}
+			}
+		}
+
+		// Beats that contain triplet strokes get their dividers at the thirds of the beat instead
+		table.time-12 td.stroke.is-triplet {
+			&.stroke-3, &.stroke-7 {
+				border-right: 0.5pt solid #bbb;
+			}
+		}
+
+		table.time-24 td.stroke.is-triplet {
+			&.stroke-7, &.stroke-15 {
+				border-right: 0.5pt solid #bbb;
+			}
+		}
+	}
+</style>

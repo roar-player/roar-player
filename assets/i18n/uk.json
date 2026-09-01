@@ -213,6 +213,7 @@
     },
     "example-song-player": {
         "listen": "Слухай",
+        "stop": "Стій",
         "download-mp3": "Завантажити як MP3"
     },
     "song-player-toolbar": {

@@ -1,23 +1,28 @@
-FROM httpd:2.4-alpine
+FROM node:lts-alpine AS build
 
-RUN echo "AddType text/cache-manifest .manifest" >> /usr/local/apache2/conf/httpd.conf
+# chromium + ttf-dejavu + font-noto-emoji are used to generate the PDF tune sheets (the browser that
+# Puppeteer would download itself does not run on Alpine/musl); git is used to determine the per-tune
+# sheet versions from the repository history (the .git directory must be part of the build context,
+# with the full history — a shallow clone yields no per-tune versions)
+RUN apk add --update-cache git chromium ttf-dejavu font-noto-emoji && \
+    git config --global --add safe.directory /player
 
-RUN apk --no-cache update && apk --no-cache add git nodejs yarn dumb-init
+ENV PUPPETEER_SKIP_DOWNLOAD=1
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-RUN adduser -D -h /opt/ror-player -s /bin/sh beatbox
-USER beatbox
-WORKDIR /opt/ror-player/
+WORKDIR /player
+COPY ./ ./
 
-COPY --chown=beatbox ./ ./
+RUN yarn install && yarn build && yarn build-sheets
 
-RUN yarn install && yarn build && rm -rf node_modules
+FROM nginx:stable-alpine AS production
 
-USER root
-RUN mv dist/* /usr/local/apache2/htdocs/
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /player/dist /usr/share/nginx/html/
 
-ENTRYPOINT [ "/usr/bin/dumb-init", "--" ]
-
-ENV TITLE RoR Player
+ENV TITLE RoaR Player
 ENV DESCRIPTION A pattern-based drumming machine.
 
-CMD [ "/bin/sh", "-c", "sed -ri /usr/local/apache2/htdocs/index.html -e \"s@<title>[^<]*</title>@<title>$TITLE</title>@\" -e \"s@(<meta name=\\\"description\\\" content=\\\")[^\\\"]*(\\\">)@\\\\1$DESCRIPTION\\\\2@\" && httpd-foreground" ]
+# The nginx image's entrypoint runs its init scripts and then execs the CMD, so the title/description
+# of the served app can still be customized through the TITLE/DESCRIPTION environment variables
+CMD [ "/bin/sh", "-c", "sed -ri /usr/share/nginx/html/index.html -e \"s@<title>[^<]*</title>@<title>$TITLE</title>@\" -e \"s@(<meta name=\\\"description\\\" content=\\\")[^\\\"]*(\\\">)@\\\\1$DESCRIPTION\\\\2@\" && exec nginx -g 'daemon off;'" ]

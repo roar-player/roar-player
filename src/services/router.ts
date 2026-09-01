@@ -10,6 +10,9 @@ export type Route = {
 	tuneName?: string;
 	patternName?: string;
 	importData?: string;
+} | {
+	tab: "sheet";
+	tuneName?: string;
 };
 
 const ROUTES = {
@@ -22,6 +25,8 @@ const ROUTES = {
 	"compose-importAndTune": "/compose/:importData/:tuneName/",
 	"compose-importAndPattern": "/compose/:importData/:tuneName/:patternName",
 	"compose-import": "/compose/:importData",
+	"sheet-booklet": "/sheet/",
+	"sheet-tune": "/sheet/:tuneName",
 	"legacy-tune": "/:tuneName/",
 	"legacy-pattern": "/:tuneName/:patternName",
 	"legacy-importAndTune": "/:importData/:tuneName/",
@@ -55,6 +60,13 @@ function pathToRoute(path: string): Route {
 				tab: "listen",
 				tuneName: match.params?.tuneName,
 				patternName: match.params?.patternName
+			};
+
+		case "sheet-booklet":
+		case "sheet-tune":
+			return {
+				tab: "sheet",
+				tuneName: match.params?.tuneName
 			};
 
 		case "compose":
@@ -100,6 +112,14 @@ function routeToPath(route: Route): string {
 				match = { name: route.importData ? "compose-importAndTune" : "compose-tune", params: { importData: route.importData, tuneName: route.tuneName } };
 			} else {
 				match = { name: route.importData ? "compose-importAndPattern" : "compose-pattern", params: { importData: route.importData, tuneName: route.tuneName, patternName: route.patternName } };
+			}
+			break;
+
+		case "sheet":
+			if (!route.tuneName) {
+				match = { name: "sheet-booklet" };
+			} else {
+				match = { name: "sheet-tune", params: { tuneName: route.tuneName } };
 			}
 	}
 

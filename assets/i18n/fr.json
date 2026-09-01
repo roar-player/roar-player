@@ -209,6 +209,7 @@
     },
     "example-song-player": {
         "listen": "Ecouter",
+        "stop": "Stop",
         "download-mp3": "Télécharger en MP3"
     },
     "tune-info": {

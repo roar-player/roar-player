@@ -155,6 +155,7 @@
     },
     "example-song-player": {
         "listen": "கேளுங்கள்",
+        "stop": "நிறுத்து",
         "download-mp3": "Mp3 ஆக பதிவிறக்கவும்"
     },
     "tune-info": {

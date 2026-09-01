@@ -78,6 +78,59 @@ after step 2 you can run `npm run dev-server` instead. This will start a webserv
 the built player. When you make any changes to a file, it detects that and rebuild just that file. Simply reload the page to
 see the updated player.
 
+Generate PDF tune sheets
+------------------------
+
+Printable A4 tune sheets can be generated automatically from the pattern definitions. The player renders them on the
+`#/sheet/<tune name>` route (and `#/sheet/` for a booklet preview of all tunes), condensed compared to the regular
+pattern view: instruments that play the same line are merged into one row (e.g. “Repi” and “Everybody else”),
+instruments that don't play anything are omitted, repeated bars are shown once with a repeat count (“×4”), volume
+changes (through the volume hack) are indicated textually above the affected bars (“(soft to loud)” for ramps,
+“(soft)”/“(loud)” for constant sections; if not all instruments are affected, they are named, e.g.
+“(Snare: soft to loud)” or “(All but Repi: soft)”), and a legend explains the stroke symbols.
+
+To turn them into PDFs, run `npm run build-sheets` after `npm run build`. This renders the sheet routes of the built
+player in headless Chromium (via Puppeteer) and writes one PDF per tune plus a `booklet.pdf` (with cover, table of
+contents, page numbers and bookmarks) to `dist/pdf/`.
+
+In environments where Puppeteer cannot download its own browser (e.g. a Docker build), install a system Chromium and
+set `PUPPETEER_SKIP_DOWNLOAD=1` during `npm install` and `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` when running
+`npm run build-sheets`. For nice cover/contents pages, a Unicode TTF font should be available (e.g. the
+`fonts-dejavu`/`ttf-dejavu` package); rendering the sheets themselves uses the browser's fonts.
+
+If the tune descriptions reference images that are not part of the build output (e.g. sign images served from a
+separate folder), pass the folders in `SHEETS_STATIC_DIRS` (colon-separated); each folder is served under its
+basename while rendering, e.g. `SHEETS_STATIC_DIRS=/player/signs npm run build-sheets` serves `/player/signs/x.gif`
+as `signs/x.gif`. Animated GIFs appear as their first frame in the PDFs.
+
+The booklet cover and the page footers can be customized through environment variables: `SHEETS_TITLE` (the
+title on the cover page, default: the app name, i.e. the HTML `<title>` of the build), `SHEETS_SUBTITLE` (the
+subtitle on the cover page, default "Tune sheets"), `SHEETS_SOURCE` (where the sheets were generated from, e.g. a
+player URL, shown on the cover page), `SHEETS_LOGO` (path to a PNG/JPEG logo shown on the cover page) and
+`SHEETS_VERSION` (shown on the cover page and in the footer of every page, defaults to today's date).
+
+Since the description Markdown may contain raw HTML, content that should only be shown in the app but not on the
+generated sheets can be wrapped in an element with the class `no-sheet`, e.g.
+`<div class="no-sheet">...</div>` (with blank lines around the tags, the content in between is still rendered
+as Markdown).
+
+The sheets can be customized further:
+* A pattern with `hideFromSheet: true` (in `src/defaultTunes.ts`) is not printed on the sheets; tunes in which
+  all patterns are hidden are left out entirely.
+* A pattern with `sheetOpenRepeats: [<beat numbers>]` renders the repeated block starting at that beat number
+  (1-based, as printed on the sheet) with “N×” instead of the repeat count, for parts that are repeated
+  indefinitely. The repetition detection is re-anchored at such a beat: no repetition may extend across it, so
+  a repetition starting there is detected even if a different phase of it starts earlier in the pattern. If no
+  repetition is detected at that beat, the single bar starting there is rendered as an open-ended (“N×”) repeat
+  block instead.
+* `sheetAliases` in `src/config.ts` defines names for instrument groups (e.g. “Surdos” for Surdo 1 + Surdo 2)
+  that are used as row labels when all instruments of the group play the same line, and
+  `instruments[key].sheetShortName` defines a shorter instrument name used when a row lists several names.
+
+Emoji (e.g. in tune names or descriptions) are rendered on the sheets if an emoji font is installed (e.g. the
+`font-noto-emoji` package); on the booklet's cover and contents pages (which are not rendered by the browser)
+they are replaced with "?".
+
 Host it
 -------
 

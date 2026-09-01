@@ -4,7 +4,7 @@ import { createInstance } from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { defineComponent, ref } from "vue";
 
-const DEFAULT_LANGUAGE = "en";
+export const DEFAULT_LANGUAGE = "en";
 
 const LANG_LOCAL_STORAGE = "lang";
 const LANG_QUERY = "lang";
@@ -42,9 +42,11 @@ i18n.init({
 }).catch((err) => console.error("Error initializing i18n", err)); // eslint-disable-line no-console
 
 const TUNE_DESCRIPTIONS_NS = "tune-descriptions";
-for (const [filename, module] of Object.entries(import.meta.glob('../../assets/tuneDescriptions/*/*.md', { eager: true }))) {
-	const m = filename.match(/([^/\\]+)[/\\]([^/\\]+)\.md/)!;
+const tuneDescriptionLanguages: Record<string, string[]> = {};
+for (const [filename, module] of Object.entries(import.meta.glob('../../assets/tunes/*/description.*.md', { eager: true }))) {
+	const m = filename.match(/([^/\\]+)[/\\]description\.([^/.\\]+)\.md$/)!;
 	i18n.addResource(m[2], TUNE_DESCRIPTIONS_NS, m[1], (module as any).html);
+	(tuneDescriptionLanguages[m[1]] ??= []).push(m[2]);
 }
 
 const APP_INSTRUCTIONS_NS = "app-instructions";
@@ -76,6 +78,7 @@ export function getI18n(): {
 	t: typeof i18n["t"];
 	changeLanguage: (lang: string) => Promise<void>;
 	currentLanguage: string;
+	currentResolvedLanguage: string;
 } {
 	return {
 		t: i18n.t,
@@ -88,6 +91,13 @@ export function getI18n(): {
 			// Consume resource change counter to make this reactive to language changes
 			i18nResourceChangeCounter.value;
 			return i18n.language;
+		},
+
+		get currentResolvedLanguage() {
+			// The language of LANGUAGES that is actually in use (e.g. "de" when the detected "de-CH" is
+			// resolved to it), e.g. for the names of the generated sheet PDFs
+			i18nResourceChangeCounter.value;
+			return i18n.resolvedLanguage ?? DEFAULT_LANGUAGE;
 		}
 	};
 }
@@ -100,11 +110,36 @@ export function getTuneDescriptionHtml(tuneName: string): string {
 	return i18n.t(tuneName, { ns: TUNE_DESCRIPTIONS_NS, defaultValue: "" });
 }
 
+/**
+ * The languages in which the given tune folder (see defaultTuneFolders) has a description.<lang>.md.
+ * The generated sheet PDFs exist only in these languages (plus the fallback language), see
+ * getSheetPdfLanguage() in src/state/sheet.ts.
+ */
+export function getTuneDescriptionLanguages(tuneFolder: string): string[] {
+	return tuneDescriptionLanguages[tuneFolder] ?? [];
+}
+
 export function getAppInstructionsHtml(): string {
 	return i18n.t(APP_INSTRUCTIONS_KEY, { ns: APP_INSTRUCTIONS_NS });
 }
 
 export function getLocalizedDisplayName(name: string): string {
+	// Data-driven translations from the "display-names" section of the language files (assets/i18n/):
+	// first the exact name is looked up, then a variant with the first number replaced by a {{n}}
+	// placeholder (so a single key like "Break {{n}}" translates "Break 1" through "Break 10").
+	// Untranslated names fall through to the hardcoded defaults below.
+	const exact = getI18n().t(`display-names.${name}`, { defaultValue: "" });
+	if (exact) {
+		return exact;
+	}
+	const numberMatch = name.match(/\d+/);
+	if (numberMatch) {
+		const numbered = getI18n().t(`display-names.${name.replace(/\d+/, "{{n}}")}`, { defaultValue: "", n: numberMatch[0] });
+		if (numbered) {
+			return numbered;
+		}
+	}
+
 	switch (name) {
 		case "General Breaks":
 			return getI18n().t("i18n.general-breaks");

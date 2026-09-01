@@ -36,6 +36,21 @@ export const instrumentVolumeHackValidator = transformValidator(strictInstrument
 	}
 }, strictInstrumentVolumeHackValidator);
 
+/**
+ * A (hacky) way to specify tempo changes at certain beats of a pattern.
+ * A record where the key is the 1-based beat number (as shown in the condensed pattern representation, like
+ * openRepeats) and the value is the speed delta in bpm relative to the tempo at which the pattern is entered:
+ * its base speed (`speed`) when the pattern is played alone, or the prevailing tempo when it is part of a song
+ * whose earlier patterns have already changed the speed — so speed changes accumulate across the patterns of a
+ * song, and everything scales along when the playback speed is changed. Within a pattern, values are not
+ * cumulative: each one states the total delta (since the pattern's entry) that applies from its beat on. A
+ * value stays in effect until the next speed hack point — also across the following patterns of a song. Beats
+ * should be bar starts (beat 1, 5, 9, …), as the tune sheets and the pattern player annotate the changes at
+ * bar lines.
+ */
+export type SpeedHack = z.infer<typeof speedHackValidator>;
+export const speedHackValidator = numberRecordValidator(z.number());
+
 type PatternProperties = z.infer<typeof patternPropertiesValidator>;
 const patternPropertiesValidator = z.object({
 	length: z.number().default(4),
@@ -44,7 +59,20 @@ const patternPropertiesValidator = z.object({
 	upbeat: z.number().default(0),
 	loop: z.boolean().default(false),
 	displayName: z.string().optional(),
-	volumeHack: instrumentVolumeHackValidator.optional()
+	volumeHack: instrumentVolumeHackValidator.optional(),
+	speedHack: speedHackValidator.optional(),
+	/** If true, the pattern is not printed on the generated tune sheets (see src/ui/sheet/). */
+	hideFromSheet: z.boolean().optional(),
+	/**
+	 * Beat numbers (1-based, as shown in the condensed pattern representation — on the tune sheets and in the
+	 * condensed view of the pattern player) at which an indefinitely repeated block starts. The repeat count of
+	 * such a block is rendered as “N×” instead of the number of times it appears in the pattern. The
+	 * repetition detection is re-anchored at such a beat: no repetition may extend across it, so a repetition
+	 * starting there is detected even if a different phase of it starts earlier in the pattern. If no
+	 * repetition is detected at that beat, the single bar starting there is rendered as an open-ended (“N×”)
+	 * repeat block instead.
+	 */
+	openRepeats: z.array(z.number()).optional()
 });
 
 /**
@@ -185,6 +213,8 @@ export function patternEquals(pattern: Pattern, pattern2: Pattern): boolean {
 		return false;
 	if(!isEqual(pattern.volumeHack, pattern2.volumeHack))
 		return false;
+	if(!isEqual(pattern.speedHack, pattern2.speedHack))
+		return false;
 
 	const length = pattern.length * pattern.time + pattern.upbeat;
 	for(const instr of config.instrumentKeys) {
@@ -215,6 +245,12 @@ export function patternFromCompressed(encodedPatternObject: CompressedPattern, o
 		ret.upbeat = 0;
 	if(encodedPatternObject.volumeHack != null)
 		ret.volumeHack = encodedPatternObject.volumeHack;
+	if(encodedPatternObject.speedHack != null)
+		ret.speedHack = encodedPatternObject.speedHack;
+	if(encodedPatternObject.hideFromSheet != null)
+		ret.hideFromSheet = encodedPatternObject.hideFromSheet;
+	if(encodedPatternObject.openRepeats != null)
+		ret.openRepeats = encodedPatternObject.openRepeats;
 
 	if(ret.length == null)
 		throw new Error("No pattern length provided.");
@@ -279,6 +315,115 @@ export function updateStroke(pattern: Pattern, instrument: Instrument, i: number
 	if(!pattern[instrument])
 		pattern[instrument] = [];
 	pattern[instrument][i] = stroke;
+}
+
+/**
+ * A repeated block of bars of a pattern, as detected by the repeat condensation of the condensed pattern
+ * representation (structurally compatible with CondensedSegment from ./condensed). Bar 0 is the first bar
+ * after the upbeat.
+ */
+export type PatternSegment = {
+	startBar: number;
+	bars: number;
+	repeat: number;
+};
+
+/**
+ * Sets the stroke at the given position (a raw index into the stroke array, i.e. including the upbeat strokes)
+ * and mirrors it into all other iterations of the given repeated segment. Used by the condensed pattern view,
+ * where a repeated block is rendered (and edited) once but represents all its iterations.
+ * Positions within the upbeat, or without a repeated segment, are updated as usual.
+ */
+export function updateStrokeMirrored(pattern: Pattern, instrument: Instrument, i: number, stroke: string, segment?: PatternSegment): void {
+	const bodyIndex = i - pattern.upbeat;
+	if(!segment || segment.repeat <= 1 || bodyIndex < 0) {
+		updateStroke(pattern, instrument, i, stroke);
+		return;
+	}
+
+	const barStrokes = 4 * pattern.time;
+	const unitStrokes = segment.bars * barStrokes;
+	const offset = (bodyIndex - segment.startBar * barStrokes) % unitStrokes;
+	for(let iteration = 0; iteration < segment.repeat; iteration++) {
+		updateStroke(pattern, instrument, pattern.upbeat + segment.startBar * barStrokes + iteration * unitStrokes + offset, stroke);
+	}
+}
+
+/**
+ * Changes how often the given repeated segment is played by appending copies of (or removing iterations of) its
+ * repeated unit at the end of the block, adjusting the pattern length accordingly. The stroke indexes of the
+ * volume hack and the beat numbers of the speed hack and of openRepeats that lie behind the changed region are
+ * shifted along so that they keep referring to the same strokes (points within a removed region are dropped).
+ */
+export function setSegmentRepeatCount(pattern: Pattern, segment: PatternSegment, newRepeat: number): void {
+	newRepeat = Math.max(1, Math.round(newRepeat));
+	if(newRepeat == segment.repeat)
+		return;
+
+	const barStrokes = 4 * pattern.time;
+	const unitStrokes = segment.bars * barStrokes;
+	const unitStart = pattern.upbeat + segment.startBar * barStrokes;
+	const blockEnd = unitStart + segment.repeat * unitStrokes;
+	const shift = (newRepeat - segment.repeat) * unitStrokes;
+	// The first raw stroke index affected by the change: strokes (and volume points) at or behind it are shifted
+	const changeStart = Math.min(blockEnd, blockEnd + shift);
+
+	for(const instr of config.instrumentKeys) {
+		const strokes = pattern[instr];
+		if(!strokes || strokes.length <= unitStart)
+			continue;
+		if(shift > 0) {
+			if(strokes.length < blockEnd)
+				strokes.length = blockEnd;
+			const copies: string[] = [];
+			for(let i = 0; i < shift; i++)
+				copies.push(strokes[unitStart + i % unitStrokes]);
+			strokes.splice(blockEnd, 0, ...copies);
+		} else if(strokes.length > changeStart) {
+			strokes.splice(changeStart, -shift);
+		}
+	}
+
+	if(pattern.volumeHack) {
+		for(const instr of Object.keys(pattern.volumeHack) as Instrument[]) {
+			const hack = pattern.volumeHack[instr];
+			if(!hack)
+				continue;
+			const updated: AllVolumeHack = {};
+			for(const key of Object.keys(hack).map(Number)) {
+				if(key < changeStart)
+					updated[key] = hack[key];
+				else if(key >= blockEnd)
+					updated[key + shift] = hack[key];
+				// Volume points within a removed iteration are dropped
+			}
+			pattern.volumeHack[instr] = updated;
+		}
+	}
+
+	const shiftBeats = (newRepeat - segment.repeat) * segment.bars * 4;
+	const changeStartBeat = (changeStart - pattern.upbeat) / pattern.time;
+	const blockEndBeat = (blockEnd - pattern.upbeat) / pattern.time;
+
+	if(pattern.speedHack) {
+		const updated: SpeedHack = {};
+		for(const beat of Object.keys(pattern.speedHack).map(Number)) {
+			if(beat - 1 < changeStartBeat)
+				updated[beat] = pattern.speedHack[beat];
+			else if(beat - 1 >= blockEndBeat)
+				updated[beat + shiftBeats] = pattern.speedHack[beat];
+			// Speed points within a removed iteration are dropped
+		}
+		pattern.speedHack = updated;
+	}
+
+	if(pattern.openRepeats) {
+		pattern.openRepeats = pattern.openRepeats
+			.filter((beat) => beat - 1 < changeStartBeat || beat - 1 >= blockEndBeat)
+			.map((beat) => (beat - 1 >= blockEndBeat ? beat + shiftBeats : beat));
+	}
+
+	pattern.length += (newRepeat - segment.repeat) * segment.bars * 4;
 }
 
 /**

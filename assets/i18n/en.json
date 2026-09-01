@@ -161,14 +161,20 @@
 	},
 	"help": {
 		"user-manual": "User manual",
+		"tune-sheets": "Tune sheet booklet (PDF)",
 		"report-problem": "Report a problem",
 		"download": "Download {{appName}}",
 		"app": "{{appName}} app",
 		"source-code": "Source code on GitHub",
-		"language": "Language"
+		"language": "Language",
+		"colour-mode": "Colour mode",
+		"colour-mode-auto": "auto",
+		"colour-mode-light": "light",
+		"colour-mode-dark": "dark"
 	},
 	"example-song-player": {
 		"listen": "Listen",
+		"stop": "Stop",
 		"download-mp3": "Download as MP3"
 	},
 	"tune-info": {
@@ -178,6 +184,31 @@
 		"video": "Video",
 		"sounds": "Sounds",
 		"download-mp3": "Download as MP3"
+	},
+	"condensed": {
+		"everybody": "Everybody",
+		"everybody-else": "Everybody else",
+		"crescendo": "soft to loud",
+		"decrescendo": "loud to soft",
+		"soft": "soft",
+		"loud": "loud",
+		"all-but": "All but {{instruments}}",
+		"tempo-up": "speed up",
+		"tempo-down": "slow down",
+		"tempo-up-each": "speed up (at each repetition)",
+		"tempo-down-each": "slow down (at each repetition)",
+		"tempo-up-here-and-each": "speed up (here and at each repetition)",
+		"tempo-down-here-and-each": "slow down (here and at each repetition)",
+		"tempo-bpm": "♩{{bpm}}bpm"
+	},
+	"sheet": {
+		"speed": "{{bpm}} bpm",
+		"booklet-title": "Tune sheets",
+		"tune-not-found": "This tune does not exist.",
+		"generated": "Generated from the {{appName}} pattern definitions",
+		"generated-source": "Generated from {{source}}",
+		"contents": "Contents",
+		"footer": "{{title}} · Page {{page}} · Version {{version}}"
 	},
 	"pattern-length-picker": {
 		"length": "Length: {{length}}"
@@ -189,7 +220,11 @@
 		"restore-title": "Restore original",
 		"restore-message": "Are you sure that you want to revert your modifications and restore the original break?",
 		"restore-ok": "Restore",
-		"restore": "Restore original"
+		"restore": "Restore original",
+		"condensed-tooltip": "Toggle between the condensed view (repeated bars are shown only once, like on the tune sheets) and the full pattern",
+		"repeat-edit-hint": "This block is repeated. Edits inside it apply to all repetitions.",
+		"repeat-add": "Add one repetition",
+		"repeat-remove": "Remove one repetition"
 	},
 	"time-signature-picker": {
 		"time-signature": "Time signature: {{time}}"

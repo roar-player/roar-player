@@ -1,4 +1,4 @@
-import { createApp, defineComponent, Directive, h, ref } from "vue";
+import { createApp, defineComponent, Directive, h, ref, watchEffect } from "vue";
 import "./bootstrap.scss";
 import "./bootstrap";
 import "./app.scss";
@@ -6,14 +6,15 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import Overview from "./ui/overview.vue";
 import { registerServiceWorker } from "./services/service-worker";
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faBars, faCaretDown, faCheck, faClock, faCode, faCog, faCopy, faDownload, faEraser, faExclamationCircle, faInfoCircle, faFileExport, faFileImport, faHandPointRight, faHeadphones, faMobileAlt, faMusic, faPause, faPen, faPencilAlt, faPlay, faPlayCircle, faPlus, faQuestionCircle, faShare, faSlidersH, faStar, faStop, faTrash, faVolumeMute, faWindowClose } from '@fortawesome/free-solid-svg-icons'
+import { faBars, faCaretDown, faCheck, faClock, faCode, faCog, faCopy, faDownload, faEraser, faExclamationCircle, faInfoCircle, faFileExport, faFileImport, faHandPointRight, faHeadphones, faMinus, faMobileAlt, faMusic, faPause, faPen, faPencilAlt, faPlay, faPlayCircle, faPlus, faQuestionCircle, faShare, faSlidersH, faStar, faStop, faTrash, faVolumeMute, faWindowClose } from '@fortawesome/free-solid-svg-icons'
 import Vue3TouchEvents, { Vue3TouchEventsOptions } from "vue3-touch-events";
 import { ensurePersistentStorage, reactiveLocalStorage } from "./services/localStorage";
 import { reactiveLocationHash } from "./services/router";
+import { theme } from "./services/bootstrap";
 
 registerServiceWorker();
 
-library.add(faBars, faCaretDown, faCheck, faClock, faCode, faCog, faCopy, faDownload, faEraser, faExclamationCircle, faInfoCircle, faFileExport, faFileImport, faHandPointRight, faHeadphones, faMobileAlt, faMusic, faPause, faPen, faPencilAlt, faPlay, faPlayCircle, faPlus, faQuestionCircle, faShare, faSlidersH, faStar, faStop, faTrash, faVolumeMute, faWindowClose);
+library.add(faBars, faCaretDown, faCheck, faClock, faCode, faCog, faCopy, faDownload, faEraser, faExclamationCircle, faInfoCircle, faFileExport, faFileImport, faHandPointRight, faHeadphones, faMinus, faMobileAlt, faMusic, faPause, faPen, faPencilAlt, faPlay, faPlayCircle, faPlus, faQuestionCircle, faShare, faSlidersH, faStar, faStop, faTrash, faVolumeMute, faWindowClose);
 
 const Root = defineComponent({
 	setup() {
@@ -47,3 +48,7 @@ declare module "vue" {
 }
 
 document.getElementById('loading')!.remove();
+
+watchEffect(() => {
+	document.documentElement.setAttribute("data-bs-theme", theme.value);
+});
