@@ -47,6 +47,26 @@ Technical notes
   has changed, a notification is shown in the player, and the page has to be reloaded in order to show the updated version.
 
 
+Upstream
+========
+
+This player is derived from [RoR Player](https://github.com/beatboxjs/ror-player) (`ror-player`). Its history diverged
+from upstream (tunes and instruments were moved into `assets/`, sheet generation was added, …), so upstream commits
+are not merged or rebased onto this branch but ported by hand (`git cherry-pick`, or re-applied manually where the
+files have moved).
+
+`ror-player.rev` records the last upstream commit whose changes have been ported. To see what is still pending:
+
+```bash
+git remote add ror-player https://github.com/beatboxjs/ror-player.git   # once
+git fetch ror-player
+git log --oneline "$(cat ror-player.rev)..ror-player/main"
+```
+
+After porting, update `ror-player.rev` to the new upstream commit in the same commit. Upstream tunes live in
+`src/defaultTunes.ts` and `assets/tuneDescriptions/<tune>/<lang>.md`; here they become
+`assets/tunes/<tune>/patterns.ts` and `assets/tunes/<tune>/description.<lang>.md` (see `assets/tunes/README.md`).
+
 Build and host it yourself
 ==========================
 
