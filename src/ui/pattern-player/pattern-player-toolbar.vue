@@ -47,20 +47,34 @@
 	<div class="bb-pattern-editor-toolbar">
 		<PlayPauseStopButton :player="props.player" />
 		<PlaybackSettingsPicker v-model="playbackSettings" :default-speed="pattern.speed" />
+		<slot name="settings"/>
 
 		<div class="divider"></div>
 
 		<template v-if="!readonly">
 			<div class="btn-group">
-				<PatternLengthPicker :modelValue="pattern.length" @update:modelValue="handleUpdatePattern({ length: $event })" :buttonClass="{ 'has-changes': originalPattern && originalPattern.length != pattern.length }"/>
+				<PatternLengthPicker
+					:modelValue="pattern.length"
+					@update:modelValue="handleUpdatePattern({ length: $event })"
+					:variant="originalPattern && originalPattern.length != pattern.length ? 'modified' : undefined"
+				/>
 			</div>
 
 			<div class="btn-group">
-				<TimeSignaturePicker :modelValue="pattern.time" @update:modelValue="handleUpdatePattern({ time: $event })" :buttonClass="{ 'has-changes': originalPattern && originalPattern.time != pattern.time }" />
+				<TimeSignaturePicker
+					:modelValue="pattern.time"
+					@update:modelValue="handleUpdatePattern({ time: $event })"
+					:variant="originalPattern && originalPattern.time != pattern.time ? 'modified' : undefined"
+				/>
 			</div>
 
 			<div class="btn-group">
-				<UpbeatPicker :modelValue="pattern.upbeat" @update:modelValue="handleUpdatePattern({ upbeat: $event })" :time="pattern.time" :buttonClass="{ 'has-changes': originalPattern && originalPattern.upbeat * pattern.time != pattern.upbeat * originalPattern.time }" />
+				<UpbeatPicker
+					:modelValue="pattern.upbeat"
+					@update:modelValue="handleUpdatePattern({ upbeat: $event })"
+					:time="pattern.time"
+					:variant="originalPattern && originalPattern.upbeat * pattern.time != pattern.upbeat * originalPattern.time ? 'modified' : undefined"
+				/>
 			</div>
 		</template>
 
@@ -85,12 +99,12 @@
 			margin-left: 0.75rem;
 			margin-right: 0.5rem;
 			height: 34px;
-			border-left: 1px solid #dee2e6;
-		}
+			border-left: 1px solid var(--bs-border-color);
 
-		button.has-changes {
-			background: linear-gradient(to bottom, #fdf4e8 0%, #f7d3a1 100%);
-			border-color: #f7d3a1;
+			// A divider with nothing after it (e.g. the read-only toolbar without local changes) is not shown
+			&:last-child {
+				display: none;
+			}
 		}
 	}
 </style>

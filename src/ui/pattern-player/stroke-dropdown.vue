@@ -43,10 +43,8 @@
 		if(!sequence.value)
 			return possibleStrokes;
 
-		for(let strokeKey of config.instruments[props.instrument].strokes) {
-			let strokeDesc = config.strokes[strokeKey];
-
-			if(strokeDesc.toLowerCase().startsWith(sequence.value))
+		for(let [strokeKey, stroke] of Object.entries(config.instruments[props.instrument].strokes)) {
+			if(stroke.display.toLowerCase().startsWith(sequence.value))
 				possibleStrokes.push(strokeKey);
 		}
 		return possibleStrokes;
@@ -123,15 +121,15 @@
 	<div class="list-group bb-pattern-player-stokes-dropdown-menu">
 		<a class="list-group-item list-group-item-action" :class="{ active: !sequence && (!value || value == ' ') }" href="javascript:" @click="handleSelect(' ')" draggable="false">&nbsp;</a>
 		<a class="list-group-item list-group-item-action"
-			v-for="stroke in config.instruments[instrument].strokes"
-			:key="stroke"
-			:class="{ active: sequence ? getCurrentStrokeSequenceOptions().includes(stroke) : value == stroke }"
+			v-for="(stroke, strokeKey) in config.instruments[instrument].strokes"
+			:key="strokeKey"
+			:class="{ active: sequence ? getCurrentStrokeSequenceOptions().includes(strokeKey) : value == strokeKey }"
 			href="javascript:"
-			@click="handleSelect(stroke)"
-			v-tooltip="config.strokesDescription[stroke]?.()"
+			@click="handleSelect(strokeKey)"
+			v-tooltip="stroke.description?.()"
 			draggable="false"
 		>
-			{{config.strokes[stroke]}}
+			{{stroke.display}}
 		</a>
 	</div>
 </template>

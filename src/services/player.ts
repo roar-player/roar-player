@@ -7,7 +7,10 @@ import { normalizePattern, Pattern } from "../state/pattern";
 import { getPatternFromState, State } from "../state/state";
 import { getEffectiveSongLength, SongParts } from "../state/song";
 import { decode } from "base64-arraybuffer";
-import { reactive } from "vue";
+import { computed, ComputedRef, reactive } from "vue";
+import { isEqual } from "lodash-es";
+import { clone } from "../utils";
+import { buildTempoMap, gridToReal, realToGrid, resamplePattern, TempoMapSegment, TempoMark } from "./tempo";
 
 export interface BeatboxReference {
 	id: number;
@@ -16,11 +19,47 @@ export interface BeatboxReference {
 }
 
 export interface RawPatternWithUpbeat extends RawPattern {
-	upbeat: number
+	upbeat: number;
+	/**
+	 * Set if the pattern contains tempo changes (through the speed hack, see src/services/tempo.ts): the
+	 * mapping between the positions of the resampled pattern and the musical grid of config.playTime slots
+	 * per beat. Use rawPositionToBeat()/beatToRawPosition() to convert.
+	 */
+	tempoMap?: TempoMapSegment[];
+}
+
+/** Converts a raw position of the given pattern (as returned by Beatbox.getPosition()) to a beat number (0 = first regular beat). */
+export function rawPositionToBeat(position: number, rawPattern: RawPatternWithUpbeat): number {
+	const grid = rawPattern.tempoMap ? realToGrid(rawPattern.tempoMap, position) : position;
+	return (grid - rawPattern.upbeat) / config.playTime;
+}
+
+/** Converts a beat number (0 = first regular beat, can be fractional) to a raw position of the given pattern. */
+export function beatToRawPosition(beat: number, rawPattern: RawPatternWithUpbeat): number {
+	const grid = beat * config.playTime + rawPattern.upbeat;
+	return rawPattern.tempoMap ? gridToReal(rawPattern.tempoMap, grid) : grid;
+}
+
+/** The speed factor that a speed hack delta (in bpm relative to the given base speed) corresponds to. */
+function getSpeedFactor(baseSpeed: number, delta: number): number {
+	return Math.max(0.1, (baseSpeed + delta) / baseSpeed);
+}
+
+/** Bakes the given tempo marks into the raw pattern by resampling it (see src/services/tempo.ts). */
+function applyTempoMarks(raw: RawPatternWithUpbeat, marks: TempoMark[]): RawPatternWithUpbeat {
+	const tempoMap = buildTempoMap(marks);
+	if (!tempoMap) {
+		return raw;
+	}
+	return Object.assign(resamplePattern(raw, tempoMap), {
+		upbeat: raw.upbeat,
+		tempoMap
+	});
 }
 
 for(const i in audioFiles) {
-	const m = i.match(/^(.*?)_([a-f0-9]+)\.mp3$/i);
+	// The stroke sounds live in assets/instruments/<instrument>/<hex code of the stroke character>.mp3
+	const m = i.match(/^instruments\/([^/]+)\/([a-f0-9]+)\.mp3$/i);
 	if (!m) {
 		// eslint-disable-next-line no-console
 		console.warn(`Unexpected audio file name: ${i}`);
@@ -30,6 +69,25 @@ for(const i in audioFiles) {
 	const decompressed = inflateRaw(new Uint8Array(decode(audioFiles[i])));
 	void Beatbox.registerInstrument(`${m[1]}_${String.fromCodePoint(parseInt(m[2], 16))}`, decompressed.buffer as ArrayBuffer);
 }
+
+/**
+ * Laptop audio hardware powers down after a few seconds of silence and takes a moment to ramp back up,
+ * swallowing the first strokes of a fresh playback (most audibly the low ones like surdos). Beatbox
+ * creates a new AudioContext on every play() and closes it on stop(), so none of its contexts outlives
+ * a playback. Instead, keep one silent AudioContext running for the lifetime of the tab: it holds the
+ * audio output stream open, which prevents the device from suspending. It must be created during a user
+ * gesture to satisfy the browsers' autoplay policies, hence the first pointer/key event (which also
+ * precedes any click on a play button).
+ */
+let keepAliveContext: AudioContext | undefined;
+function keepAudioOutputAlive(): void {
+	if (!keepAliveContext) {
+		keepAliveContext = new AudioContext();
+		void keepAliveContext.resume();
+	}
+}
+document.addEventListener("pointerdown", keepAudioOutputAlive, { once: true, capture: true });
+document.addEventListener("keydown", keepAudioOutputAlive, { once: true, capture: true });
 
 let currentNumber = 0;
 
@@ -47,6 +105,31 @@ class CustomBeatbox extends Beatbox {
 	setPosition(position: number) {
 		super.setPosition(position);
 		this.emit("setPosition");
+	}
+
+	/**
+	 * Beatbox derives the playback position from AudioContext.getOutputTimestamp(), while it schedules the
+	 * sounds against AudioContext.currentTime. Chrome and Safari sometimes never start reporting output
+	 * timestamps for a freshly created context while another context holds an output stream (which the
+	 * keep-alive context below always does) — contextTime then stays pinned at ~0 even though currentTime
+	 * advances and the audio plays fine, freezing the position marker on the first stroke. Fall back to
+	 * currentTime while the output timestamp is missing or implausibly far from the scheduling clock.
+	 */
+	_getCurrentTime(): number | undefined {
+		if (this.playing === 0 || !this._audioContext) {
+			return undefined;
+		}
+		const audioContext = this._audioContext as AudioContext;
+		const currentTime = audioContext.currentTime;
+		const timestamp = audioContext.getOutputTimestamp();
+		if (!timestamp.contextTime) {
+			return currentTime;
+		}
+		const outputTime = timestamp.contextTime + (performance.now() - timestamp.performanceTime!) / 1000;
+		// A healthy output timestamp lags behind the scheduling clock by the output latency (at most a few
+		// hundred ms even on Bluetooth) and never runs ahead of it.
+		const lag = currentTime - outputTime;
+		return (lag < 0 || lag > 0.5) ? currentTime : outputTime;
 	}
 }
 
@@ -84,7 +167,32 @@ function isEnabled(instr: Instrument, headphones: Headphones, mute: Mute) {
 	return true;
 }
 
-export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSettings): RawPatternWithUpbeat {
+/**
+ * The playback settings that influence the result of patternToBeatbox()/songToBeatbox(), as a stable value:
+ * the same object keeps being returned until one of them changes, so that computeds deriving raw patterns from
+ * it are not re-evaluated (Vue skips dependents when a computed returns an identical value). In particular the
+ * speed is not part of the raw patterns (it is applied through Beatbox.setBeatLength() instead) — so dragging
+ * the speed slider does not rebuild the raw pattern of every player on the page on every input event.
+ */
+export function rawPatternPlaybackSettings(getSettings: () => PlaybackSettings): ComputedRef<PlaybackSettings> {
+	let last: PlaybackSettings | undefined;
+	return computed(() => {
+		const settings = getSettings();
+		if (!last || !isEqual({ ...last, speed: settings.speed }, settings)) {
+			last = clone(settings);
+		}
+		return last;
+	});
+}
+
+/**
+ * Converts a pattern to a raw beatbox pattern.
+ * @param applySpeedHack Whether the tempo changes of the pattern's speed hack are baked into the result.
+ *     songToBeatbox() passes false here: a speed hack affects the whole rest of the song, so it collects the
+ *     tempo changes of all its patterns and applies them once over the assembled song — baking them into the
+ *     individual patterns too would resample their strokes twice and misalign them against the other patterns.
+ */
+export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSettings, applySpeedHack: boolean = true): RawPatternWithUpbeat {
 	const fac = config.playTime/pattern.time;
 	const ret: RawPattern = new Array((pattern.length*pattern.time + pattern.upbeat) * fac);
 
@@ -128,9 +236,14 @@ export function patternToBeatbox(pattern: Pattern, playbackSettings: PlaybackSet
 		ret[i*fac] = stroke;
 	}
 
-	return Object.assign(ret, {
+	const marks: TempoMark[] = applySpeedHack ? Object.keys(pattern.speedHack ?? {}).map(Number).map((beat) => ({
+		slot: pattern.upbeat * fac + (beat - 1) * config.playTime,
+		factor: getSpeedFactor(pattern.speed, pattern.speedHack![beat])
+	})) : [];
+
+	return applyTempoMarks(Object.assign(ret, {
 		upbeat: pattern.upbeat * fac
-	});
+	}), marks);
 }
 
 export function songToBeatbox(song: SongParts, state: State, playbackSettings: PlaybackSettings): RawPatternWithUpbeat {
@@ -145,7 +258,7 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 			volume: playbackSettings.volume,
 			volumes: playbackSettings.volumes,
 			whistle
-		}));
+		}), false);
 
 		let upbeatHasStarted = false;
 		let idxOffset = pattern.upbeat * config.playTime / pattern.time;
@@ -161,6 +274,68 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 				existingStrokes = existingStrokes.filter((instr) => ((instr as InstrumentReferenceObject).instrument.split("_", 2)[0] != instrumentKey));
 			ret[maxUpbeat + idx + i - idxOffset] = existingStrokes.concat(patternBeatbox[i] || [ ]);
 		}
+	}
+
+	// Collect the tempo changes (through the speed hacks of the referenced patterns) of the whole song. A speed
+	// hack point stays in effect until the next one, also across the following patterns. This is independent of
+	// muted/headphoned instruments (muting an instrument does not change the tempo of the song); when several
+	// simultaneous patterns define a speed hack for the same beat, the first instrument (in the order of
+	// config.instrumentKeys) wins. The slots are relative to song beat 0 (the song upbeat is added below, once
+	// it is known).
+	type SpeedHackPoint = {
+		slot: number;
+		/** The slot at which the pattern that defines this point starts. */
+		entry: number;
+		/** The bpm delta of the speed hack point, relative to the tempo at the pattern's entry. */
+		value: number;
+		/** The base speed of the pattern, defining the bpm scale of the value. */
+		speed: number;
+	};
+	const speedHackPoints: SpeedHackPoint[] = [];
+	const speedHackSlots = new Set<number>();
+	for(let i=0; i<length; i++) {
+		for(const inst of config.instrumentKeys) {
+			const patternReference = song[i] && song[i][inst];
+			const pattern = patternReference && getPatternFromState(state, patternReference);
+			if(!pattern || !pattern.speedHack)
+				continue;
+
+			let patternLength = 1;
+			for(let j=i+1; j<i+pattern.length && (!song[j] || !song[j][inst]); j++) // Check if pattern is cut off
+				patternLength++;
+
+			for(const beat of Object.keys(pattern.speedHack).map(Number)) {
+				if(beat - 1 >= patternLength)
+					continue; // The speed hack point lies within the cut-off part of the pattern
+
+				const slot = (i + beat - 1) * config.playTime;
+				if(!speedHackSlots.has(slot)) {
+					speedHackSlots.add(slot);
+					speedHackPoints.push({ slot, entry: i * config.playTime, value: pattern.speedHack[beat], speed: pattern.speed });
+				}
+			}
+		}
+	}
+
+	// A speed hack value is relative to the tempo at which its pattern was entered, so that speed changes
+	// accumulate across the patterns of a song (a pattern that speeds up by 10 bpm does so from the prevailing
+	// tempo, not from the base speed). The points are processed in slot order, so the factor prevailing at a
+	// pattern's entry is known by the time its first point is reached (a pattern's points never lie before its
+	// entry).
+	speedHackPoints.sort((a, b) => a.slot - b.slot);
+	const tempoMarks: TempoMark[] = [];
+	const entryFactors = new Map<number, number>();
+	for(const point of speedHackPoints) {
+		let entryFactor = entryFactors.get(point.entry);
+		if(entryFactor == null) {
+			entryFactor = 1;
+			for(const mark of tempoMarks) {
+				if(mark.slot < point.entry)
+					entryFactor = mark.factor;
+			}
+			entryFactors.set(point.entry, entryFactor);
+		}
+		tempoMarks.push({ slot: point.slot, factor: Math.max(0.1, entryFactor + point.value / point.speed) });
 	}
 
 	for(let i=0; i<length; i++) {
@@ -188,9 +363,9 @@ export function songToBeatbox(song: SongParts, state: State, playbackSettings: P
 		}
 	}
 
-	return Object.assign(ret.slice(maxUpbeat - upbeat), {
+	return applyTempoMarks(Object.assign(ret.slice(maxUpbeat - upbeat), {
 		upbeat
-	});
+	}), tempoMarks.map((mark) => ({ slot: mark.slot + upbeat, factor: mark.factor })));
 }
 
 export function stopAllPlayers(): void {

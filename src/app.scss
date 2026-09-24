@@ -1,6 +1,26 @@
+:root {
+	--bb-strong-border-color: color-mix(in srgb, var(--bs-body-color) 50%, transparent);
+	--bb-active-beat-bg: #3a94a5;
+	--bb-active-beat-color: #fff;
+	--bb-disabled-link-color: color-mix(in srgb, var(--bs-body-color) 30%, transparent);
+	--bb-repeat-bg: color-mix(in srgb, var(--bs-body-color) 9%, var(--bs-body-bg));
+	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 6%, var(--bs-body-bg));
+	--bb-medium-border-color: var(--bs-border-color);
+}
+
+/* Pattern tables use three border strengths: strong (beat/bar lines), medium (subdivisions) and weak */
+/* (sub-subdivisions in compose mode). In dark mode, Bootstrap's border color would end up close to the */
+/* toned-down strong lines, so all three levels are set explicitly to keep them distinguishable. */
+[data-bs-theme="dark"] {
+	--bb-strong-border-color: color-mix(in srgb, var(--bs-body-color) 40%, transparent);
+	--bb-medium-border-color: color-mix(in srgb, var(--bs-body-color) 11%, transparent);
+	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 8%, var(--bs-body-bg));
+}
+
 html {
 	font-size: 14px;
 	min-height: 100%;
+	color-scheme: light dark;
 }
 
 html,body,#app {

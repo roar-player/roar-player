@@ -9,7 +9,7 @@
 <script lang="ts" setup>
 	import { computed, ref } from "vue";
 	import { getPatternFromState } from "../../state/state";
-	import { songToBeatbox, stopAllPlayers } from "../../services/player";
+	import { rawPatternPlaybackSettings, songToBeatbox, stopAllPlayers } from "../../services/player";
 	import { PlaybackSettings } from "../../state/playbackSettings";
 	import config from "../../config";
 	import { allInstruments, getEffectiveSongLength, SongParts } from "../../state/song";
@@ -65,7 +65,9 @@
 		return result;
 	});
 
-	const rawPattern = computed(() => songToBeatbox(songParts.value, state.value, playbackSettings.value));
+	const rawPatternSettings = rawPatternPlaybackSettings(() => playbackSettings.value);
+
+	const rawPattern = computed(() => songToBeatbox(songParts.value, state.value, rawPatternSettings.value));
 
 	const playPause = () => {
 		const p = getOrCreatePlayer();
@@ -84,15 +86,26 @@
 		p.setPosition(0);
 	};
 
+	// The width of the song strip itself, i.e. without the trailing spacer that allows scrolling the end of the
+	// song out from underneath the floating action buttons
+	const getSongWidth = () => {
+		const cards = songRef.value!.querySelectorAll<HTMLElement>(":scope > .card");
+		const last = cards[cards.length - 1];
+		return last ? last.offsetLeft + last.offsetWidth : songRef.value!.scrollWidth;
+	};
+
 	const setPosition = ($event: MouseEvent) => {
 		const length = getEffectiveSongLength(songParts.value, state.value);
 		const el = songRef.value!;
 		const rect = el.getBoundingClientRect();
-		const percent = (el.scrollLeft + $event.clientX - rect.left) / el.scrollWidth;
+		const percent = Math.max(0, Math.min(1, (el.scrollLeft + $event.clientX - rect.left) / getSongWidth()));
 		abstractPlayerRef.value!.setBeat(percent * length);
 	};
 
-	const getPositionMarkerLeft = ({ position, player }: PositionData<false>) => (position / player._pattern.length) * songRef.value!.scrollWidth;
+	// Beat-based (rather than position-based), so that the marker stays aligned with the beat-proportional
+	// pattern cards when the raw pattern contains tempo changes (through the speed hack)
+	const getPositionMarkerLeft = ({ beat }: PositionData<false>) =>
+		(Math.max(0, beat) / getEffectiveSongLength(songParts.value, state.value)) * getSongWidth();
 
 	const handleDownload = () => {
 		void download({
@@ -154,6 +167,13 @@
 					font-weight: bold;
 				}
 			}
+
+			// Trailing space, so that the end of the song can be scrolled out from underneath the floating
+			// action buttons
+			&::after {
+				content: "";
+				flex: 0 0 10em;
+			}
 		}
 
 		.actions {
@@ -166,9 +186,9 @@
 			display: flex;
 			align-items: center;
 			border-radius: 5px;
-			background-color: rgba(255, 255, 255, 0.8);
+			background-color: color-mix(in srgb, var(--bs-card-bg) 80%, transparent);
 			transition: background-color .3s;
-			box-shadow: 0 0 2px #fff, 0 0 5px #fff, 0 0 10px #fff;
+			box-shadow: 0 0 2px var(--bs-card-bg), 0 0 5px var(--bs-card-bg), 0 0 10px var(--bs-card-bg);
 
 			li {
 				opacity: 0.5;
@@ -176,7 +196,7 @@
 			}
 
 			&:hover {
-				background-color: rgba(255, 255, 255, 1);
+				background-color: var(--bs-card-bg);
 
 				li {
 					opacity: 1;

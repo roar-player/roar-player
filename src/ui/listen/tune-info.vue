@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-	import defaultTunes from "../../defaultTunes";
+	import { defaultTuneFolders } from "../../defaultTunes";
 	import config from "../../config";
 	import { clone, useRefWithOverride } from "../../utils";
 	import { computed, ref, watch } from "vue";
@@ -11,6 +11,7 @@
 	import { download, ExportType } from "../utils/export";
 	import { BeatboxReference, getPlayerById } from "../../services/player";
 	import { getLocalizedDisplayName, getTuneDescriptionHtml, T, useI18n } from "../../services/i18n";
+	import { getSheetPdfLanguage, getTuneSlug } from "../../state/sheet";
 
 	const state = injectStateRequired();
 
@@ -28,12 +29,21 @@
 	const editPattern = useRefWithOverride(undefined, () => props.editPattern, (patternName) => emit("update:editPattern", patternName));
 
 	const tune = computed(() => props.tuneName && state.value.tunes[props.tuneName]);
+
+	/**
+	 * The URL of the PDF sheet generated from the pattern definitions (see scripts/generate-sheets.mjs) in the
+	 * current language, or in the fallback language for tunes whose sheet is not generated in the current
+	 * language (because they have no description in it).
+	 */
+	const sheetPdfUrl = computed(() => `pdf/${getTuneSlug(props.tuneName)}.${getSheetPdfLanguage(props.tuneName, i18n.currentResolvedLanguage)}.pdf`);
 	const tuneDescriptionHtml = computed(() => {
-		if(!defaultTunes[props.tuneName]?.descriptionFilename)
+		const folder = defaultTuneFolders[props.tuneName];
+		const html = folder ? getTuneDescriptionHtml(folder) : "";
+		if(!html)
 			return null;
 
 		const el = document.createElement("div");
-		el.innerHTML = getTuneDescriptionHtml(defaultTunes[props.tuneName].descriptionFilename!);
+		el.innerHTML = html;
 		for (const link of el.querySelectorAll("a")) {
 			link.setAttribute("target", "_blank");
 		}
@@ -85,12 +95,12 @@
 				</T>
 			</em>
 		</p>
-		<p v-if="tune.sheet"><a :href="tune.sheet" target="_blank">{{i18n.t("tune-info.tune-sheet-pdf")}}</a></p>
+		<p><a :href="sheetPdfUrl" target="_blank">{{i18n.t("tune-info.tune-sheet-pdf")}}</a></p>
 
 		<div v-if="tune.video">
 			<h2>{{i18n.t("tune-info.video")}}</h2>
 			<div class="bb-tune-info-video">
-				<iframe sandbox="allow-same-origin allow-scripts" :src="tune.video" frameborder="0" allowfullscreen></iframe>
+				<iframe allow="autoplay; fullscreen" :src="tune.video" frameborder="0" allowfullscreen></iframe>
 			</div>
 		</div>
 
@@ -130,6 +140,10 @@
 
 		.bb-pattern-placeholder {
 			margin-bottom: .5em;
+		}
+
+		table {
+			display: inline-table;
 		}
 
 		.bb-tune-info-video {

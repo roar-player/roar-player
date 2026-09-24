@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { createPattern, getPatternFromState } from "../state/state";
-	import { patternToBeatbox, RawPatternWithUpbeat, stopAllPlayers } from "../services/player";
+	import { beatToRawPosition, patternToBeatbox, rawPatternPlaybackSettings, RawPatternWithUpbeat, stopAllPlayers } from "../services/player";
 	import { normalizePlaybackSettings, PlaybackSettings } from "../state/playbackSettings";
-	import config from "../config";
 	import defaultTunes from "../defaultTunes";
 	import { patternEquals } from "../state/pattern";
 	import { DragType, PatternDragData, setDragData } from "../services/draggable";
@@ -81,14 +80,19 @@
 		loop: pattern.value?.loop || playbackSettings.value.loop
 	}));
 
+	const rawPatternSettings = rawPatternPlaybackSettings(() => playerPlaybackSettings.value);
+
 	const rawPattern = computed<RawPatternWithUpbeat>(() => {
 		if (!pattern.value) {
 			return Object.assign([], { upbeat: 0 });
 		}
 
-		const result = patternToBeatbox(pattern.value ?? {}, playerPlaybackSettings.value);
-		if (playerPlaybackSettings.value.length) {
-			return Object.assign(result.slice(0, playerPlaybackSettings.value.length * config.playTime + pattern.value.upbeat), { upbeat: result.upbeat });
+		const result = patternToBeatbox(pattern.value ?? {}, rawPatternSettings.value);
+		if (rawPatternSettings.value.length) {
+			// Convert the cut-off beat through the tempo map (see the speed hack), as the raw positions behind
+			// a tempo change no longer correspond 1:1 to the musical grid
+			const cut = Math.round(beatToRawPosition(rawPatternSettings.value.length, result));
+			return Object.assign(result.slice(0, cut), { upbeat: result.upbeat, tempoMap: result.tempoMap });
 		} else {
 			return result;
 		}
@@ -221,23 +225,14 @@
 			top: 2px;
 			right: 2px;
 			border-radius: 5px;
-			background: rgba(255, 255, 255, 0.5);
+			background: color-mix(in srgb, var(--bs-card-bg) 50%, transparent);
 			opacity: 0.5;
 			transition: opacity .3s, background-color .3s;
 
 			&:hover {
 				opacity: 1;
-				background-color: #fff;
+				background-color: var(--bs-card-bg);
 			}
-		}
-
-		.position-marker {
-			position: absolute;
-			top: 0;
-			height: 100%;
-			border-left: 1px solid #000;
-			transition: left 0.1s linear;
-			pointer-events: none;
 		}
 
 	}

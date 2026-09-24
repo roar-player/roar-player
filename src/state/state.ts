@@ -53,7 +53,6 @@ export function extendState(
 				state.tunes[tuneName] = normalizeTune({
 					categories: data.tunes[tuneName]!.categories,
 					displayName: data.tunes[tuneName]!.displayName,
-					descriptionFilename: data.tunes[tuneName]!.descriptionFilename,
 					sheet: data.tunes[tuneName]!.sheet,
 					video: data.tunes[tuneName]!.video,
 					speed: data.tunes[tuneName]!.speed,

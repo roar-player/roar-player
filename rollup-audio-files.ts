@@ -3,7 +3,7 @@ import glob from "fast-glob";
 import { readFile } from "fs/promises";
 import { promisify } from "util";
 import { deflateRaw } from "zlib";
-import { basename } from "path";
+import { relative } from "path";
 
 export default function audioFilesPlugin(): Plugin {
 	return {
@@ -17,10 +17,11 @@ export default function audioFilesPlugin(): Plugin {
 			if (id === 'virtual:audioFiles') {
 				var binaries: Record<string, string> = {};
 
+				// Keyed by the path relative to assets/ (e.g. "instruments/ls/58.mp3"), see src/services/player.ts
 				for (const path of await glob("./assets/**/*.mp3")) {
 					const content = await readFile(path);
 					const compressed = await promisify(deflateRaw)(content);
-					binaries[basename(path)] = compressed.toString("base64");
+					binaries[relative("assets", path).replaceAll("\\", "/")] = compressed.toString("base64");
 				};
 
 				return `export default ${JSON.stringify(binaries, undefined, "\t")};`;

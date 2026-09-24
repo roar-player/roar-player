@@ -10,7 +10,9 @@
 	import config from "../../config";
 	import { useModal } from "../utils/modal";
 	import { getAppInstructionsHtml, LANGUAGES, useI18n } from "../../services/i18n";
+	import { getBookletPdfLanguage } from "../../state/sheet";
 	import { reactiveLocalStorage } from "../../services/localStorage";
+	import { themePreference } from "../../services/bootstrap";
 
 	const i18n = useI18n();
 
@@ -30,6 +32,13 @@
 	};
 
 	const appInstructionsHtml = computed(() => getAppInstructionsHtml());
+
+	/**
+	 * The URL of the generated tune sheet booklet (see scripts/generate-sheets.mjs) in the current language,
+	 * or in the fallback language if no booklet is generated in the current language (because no tune has a
+	 * description in it).
+	 */
+	const bookletPdfUrl = computed(() => `pdf/booklet.${getBookletPdfLanguage(i18n.currentResolvedLanguage)}.pdf`);
 </script>
 
 <template>
@@ -40,6 +49,7 @@
 			</button>
 			<ul class="dropdown-menu dropdown-menu-end">
 				<li><a class="dropdown-item" href="https://player-docs.rhythms-of-resistance.org/" target="_blank"><fa icon="question-circle" fixed-width/>{{" "}}{{i18n.t("help.user-manual")}}</a></li>
+				<li><a class="dropdown-item" :href="bookletPdfUrl" target="_blank"><fa icon="music" fixed-width/>{{" "}}{{i18n.t("help.tune-sheets")}}</a></li>
 				<li><a class="dropdown-item" href="https://github.com/beatboxjs/ror-player/issues" target="_blank"><fa icon="exclamation-circle" fixed-width/>{{" "}}{{i18n.t("help.report-problem")}}</a></li>
 				<li><a class="dropdown-item" href="?" :download="downloadFilename"><fa icon="download" fixed-width/>{{" "}}{{i18n.t("help.download", { appName: config.appName })}}</a></li>
 				<li><a class="dropdown-item" href="javascript:" @click="showAppModal = true"><fa icon="mobile-alt" fixed-width/>{{" "}}{{i18n.t("help.app", { appName: config.appName })}}</a></li>
@@ -55,6 +65,28 @@
 						href="javascript:"
 						@click.stop="selectLanguage(lang)"
 					>{{lang}}</a>
+				</li>
+				<li><hr class="dropdown-divider"></li>
+				<li><h6 class="dropdown-header">{{i18n.t("help.colour-mode")}}</h6></li>
+				<li class="bb-colour-mode-picker">
+					<a
+						class="dropdown-item"
+						:class="{ active: themePreference == null }"
+						href="javascript:"
+						@click.stop="themePreference = undefined"
+					>{{i18n.t("help.colour-mode-auto")}}</a>
+					<a
+						class="dropdown-item"
+						:class="{ active: themePreference === 'light' }"
+						href="javascript:"
+						@click.stop="themePreference = 'light'"
+					>{{i18n.t("help.colour-mode-light")}}</a>
+					<a
+						class="dropdown-item"
+						:class="{ active: themePreference == 'dark' }"
+						href="javascript:"
+						@click.stop="themePreference = 'dark'"
+					>{{i18n.t("help.colour-mode-dark")}}</a>
 				</li>
 			</ul>
 		</div>
@@ -87,6 +119,15 @@
 		.bb-language-picker {
 			display: grid;
 			grid-template-columns: repeat(auto-fill, 50px);
+
+			> .dropdown-item {
+				text-align: center;
+			}
+		}
+
+		.bb-colour-mode-picker {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
 
 			> .dropdown-item {
 				text-align: center;

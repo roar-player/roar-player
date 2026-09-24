@@ -2,8 +2,8 @@
 	import Beatbox from 'beatbox.js';
 	import { computed, onBeforeUnmount, ref, watch, watchSyncEffect } from 'vue';
 	import config from '../../config';
-	import { BeatboxReference, createBeatbox, getPlayerById, RawPatternWithUpbeat } from '../../services/player';
-	import { scrollToElement } from '../../services/utils';
+	import { BeatboxReference, beatToRawPosition, createBeatbox, getPlayerById, rawPositionToBeat, RawPatternWithUpbeat } from '../../services/player';
+	import { followPlayback, type FollowPlaybackContext } from '../../services/utils';
 	import { PlaybackSettings } from '../../state/playbackSettings';
 
 	export interface PositionData<Optional extends boolean = true> {
@@ -17,6 +17,9 @@
 		rawPattern: RawPatternWithUpbeat;
 		playbackSettings: PlaybackSettings;
 		getLeft: (data: PositionData<false>) => number;
+		/** Provides the playback context (read-ahead width, current repeated block) for the scrolling that
+		 * follows the position marker; without it, a generic read-ahead of 35% of the viewport is used. */
+		getScrollContext?: (data: PositionData<false>) => FollowPlaybackContext;
 	}>();
 
 	const emit = defineEmits<{
@@ -28,16 +31,31 @@
 	const playerRef = ref<BeatboxReference>();
 	const playerInst = computed(() => playerRef.value && getPlayerById(playerRef.value.id));
 
+	/** The position that the marker was last moved to, to detect backward jumps without a DOM read. */
+	let markerLeft = 0;
+
 	const updatePosition = (scroll: boolean, force = false) => {
 		const player = getOrCreatePlayer();
 		const rawPosition = player.getPosition();
 		const position = player.playing || rawPosition > 0 ? Math.min(rawPosition, player._pattern.length) : undefined;
-		const beat = position != null ? (position - player._upbeat)/config.playTime : undefined;
+		const beat = position != null ? rawPositionToBeat(position, props.rawPattern) : undefined;
 		emit("position", { position, beat, player });
 		if (position != null && beat != null) {
-			positionMarkerRef.value!.style.left = `${props.getLeft({ position, beat, player })}px`;
+			const marker = positionMarkerRef.value!;
+			const newLeft = props.getLeft({ position, beat, player });
+			if (newLeft < markerLeft) {
+				// Jump backwards (e.g. a repeated block starting over) instantly — animating it would show
+				// the marker streaking leftwards across the pattern
+				marker.style.transition = "none";
+				marker.style.transform = `translateX(${newLeft}px)`;
+				void marker.offsetWidth; // Flush, so that the transition is not applied to this change
+				marker.style.transition = "";
+			} else {
+				marker.style.transform = `translateX(${newLeft}px)`;
+			}
+			markerLeft = newLeft;
 			if (scroll) {
-				scrollToElement(positionMarkerRef.value!, true, force);
+				followPlayback(marker, newLeft, props.getScrollContext?.({ position, beat, player }), force);
 			}
 		}
 	};
@@ -112,8 +130,7 @@
 	};
 
 	const setBeat = (beat: number) => {
-		const player = getOrCreatePlayer();
-		setPosition(Math.floor(beat * config.playTime + player._upbeat));
+		setPosition(Math.floor(beatToRawPosition(beat, props.rawPattern)));
 	};
 
 	defineExpose({
@@ -132,11 +149,18 @@
 	.bb-position-marker {
 		position: absolute;
 		top: 0;
+		left: 0;
 		height: 100%;
-		border-left: 1px solid #000;
-		transition: left 0.1s linear;
+		border-left: 1px solid var(--bs-body-color);
+		/* The marker moves via transform (rather than left) on its own compositor layer (will-change), so that */
+		/* the per-frame updates during playback neither invalidate the layout (the scroll position reads right */
+		/* after would force a synchronous reflow of the whole pattern table) nor repaint the table behind it */
+		transition: transform 0.1s linear;
+		will-change: transform;
 		pointer-events: none;
 		display: none;
+		/* Above the raised .stroke-inner texts of the pattern player */
+		z-index: 2;
 
 		&.visible {
 			display: block;
