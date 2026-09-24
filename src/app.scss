@@ -13,8 +13,8 @@
 /* toned-down strong lines, so all three levels are set explicitly to keep them distinguishable. */
 [data-bs-theme="dark"] {
 	--bb-strong-border-color: color-mix(in srgb, var(--bs-body-color) 40%, transparent);
-	--bb-medium-border-color: color-mix(in srgb, var(--bs-body-color) 20%, transparent);
-	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 5%, var(--bs-body-bg));
+	--bb-medium-border-color: color-mix(in srgb, var(--bs-body-color) 11%, transparent);
+	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 8%, var(--bs-body-bg));
 }
 
 html {
