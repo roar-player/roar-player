@@ -14,7 +14,7 @@
 [data-bs-theme="dark"] {
 	--bb-strong-border-color: color-mix(in srgb, var(--bs-body-color) 40%, transparent);
 	--bb-medium-border-color: color-mix(in srgb, var(--bs-body-color) 11%, transparent);
-	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 8%, var(--bs-body-bg));
+	--bb-weak-border-color: rgba(48, 52, 56, 0.34);
 }
 
 html {
