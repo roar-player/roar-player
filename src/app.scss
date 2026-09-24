@@ -7,6 +7,11 @@
 	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 6%, var(--bs-body-bg));
 }
 
+[data-bs-theme="dark"] {
+	--bb-strong-border-color: color-mix(in srgb, var(--bs-body-color) 30%, transparent);
+	--bb-weak-border-color: color-mix(in srgb, var(--bs-body-color) 5%, var(--bs-body-bg));
+}
+
 html {
 	font-size: 14px;
 	min-height: 100%;

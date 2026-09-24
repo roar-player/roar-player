@@ -56,8 +56,8 @@ $secondary: #fff;
 // Customizations
 
 // Custom theme color "modified" to indicate local changes
-$modified: #fdf4e8;
-$modified-dark: #7d6b5e; // Recommended by AI as a dark mode equivalent
+$modified: #fbe3c2;
+$modified-dark: #42352a;
 $theme-colors: map.set($theme-colors, "modified", $modified);
 
 :root {
