@@ -551,7 +551,7 @@
 				}
 
                 &.song {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 
 				&.instrument-actions,&.song:nth-child(4n) {

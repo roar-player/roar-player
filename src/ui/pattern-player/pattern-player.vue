@@ -875,48 +875,48 @@
 
 			&.time-2 {
 				.stroke-0 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-3 {
 				.stroke--2, .stroke-0, .stroke-1 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-4 {
 				.stroke--2, .stroke--3,
 				.stroke-0, .stroke-1, .stroke-2 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-5 {
 				.stroke--2, .stroke--3, .stroke--4,
 				.stroke-0, .stroke-1, .stroke-2, .stroke-3 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-6 {
 				.stroke--3, .stroke--5,
 				.stroke-1,  .stroke-3, {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-8 {
 				.stroke--3, .stroke--5, .stroke--7,
 				.stroke-1,  .stroke-3,  .stroke-5 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-9 {
 				.stroke--4, .stroke--7,
 				.stroke-2,  .stroke-5 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
@@ -924,13 +924,13 @@
 				.stroke:not(.is-triplet) {
 					&.stroke--4, &.stroke--7, &.stroke--10,
 					&.stroke-2,  &.stroke-5,  &.stroke-8 {
-						border-right: 1px solid var(--bs-border-color);
+						border-right: 1px solid var(--bb-medium-border-color);
 					}
 				}
 				.stroke.is-triplet {
 					&.stroke--5, &.stroke--9,
 					&.stroke-3,  &.stroke-7 {
-						border-right: 1px solid var(--bs-border-color);
+						border-right: 1px solid var(--bb-medium-border-color);
 					}
 				}
 			}
@@ -938,14 +938,14 @@
 			&.time-16 {
 				.stroke--5, .stroke--9, .stroke--13,
 				.stroke-3,  .stroke-7,  .stroke-11 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
 			&.time-20 {
 				.stroke--6, .stroke--11, .stroke--16,
 				.stroke-4,  .stroke-9,   .stroke-14 {
-					border-right: 1px solid var(--bs-border-color);
+					border-right: 1px solid var(--bb-medium-border-color);
 				}
 			}
 
@@ -953,13 +953,13 @@
 				.stroke:not(.is-triplet) {
 					&.stroke--7, &.stroke--13, &.stroke--19,
 					&.stroke-5,  &.stroke-11,  &.stroke-17 {
-						border-right: 1px solid var(--bs-border-color);
+						border-right: 1px solid var(--bb-medium-border-color);
 					}
 				}
 				.stroke.is-triplet {
 					&.stroke--9, &.stroke--17,
 					&.stroke-7,  &.stroke-15 {
-						border-right: 1px solid var(--bs-border-color);
+						border-right: 1px solid var(--bb-medium-border-color);
 					}
 				}
 			}

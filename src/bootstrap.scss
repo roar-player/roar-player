@@ -62,9 +62,12 @@ $theme-colors: map.set($theme-colors, "modified", $modified);
 
 :root {
 	--bb-modified: #{$modified};
-	@include color-mode(dark) {
-		--bb-modified: #{$modified-dark};
-	}
+}
+
+// Not nested in :root — that would emit the descendant selector ":root [data-bs-theme=dark]", which never
+// matches because the theme attribute is set on the <html> element itself.
+@include color-mode(dark) {
+	--bb-modified: #{$modified-dark};
 }
 
 // Set button style to bootstrap v3 theme
